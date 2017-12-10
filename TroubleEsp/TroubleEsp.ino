@@ -24,15 +24,21 @@
   - DC&Step, stoppers, homing, autotune, followers
   - RS485 on phantom power
   - standard arduino w/wo ethernet shield w/wo rs485
-  - screen
   - off led after reboot, 00 as statug orange at boot, green on wifi connected
   - group connnected friends on main page (osc info collect)
   - main selector (BEN_) in config
-  - 'I' 'i' input to return to sender
+  - 'I' 'i' input to return to sender only
   - security S1 == S2 in eeprom add and check signature for 1char Crc on osc and admin/pwd on html xxxxxnU
   - websocket support https://fr.wikipedia.org/wiki/WebSocket
-  - wifiMulti dynamic alloc to reinit without hard reboot
+  - ESP32 eeprom not ok
+  - ESP322 everything
   ... memory not so secure, power down before rx tx plugs or config is forgotten, think about trying "esp filesystem" rumors
+
+  Done :
+  - 'I' 'i' input to return
+  - ESP32 minimal support
+  - screen SSD1306
+  - now on github https://github.com/CrabTerlDc/TroubleEsp
   CRAB_20171111
   - 4 parameters for speed and pos X and Y mstly for apps
   - stepper and stopper works together
@@ -112,7 +118,7 @@
   example pastille 070V 00R 87P 100m
 */
 
-#define HARDWARE_NAME "CRAB_20171204"
+#define HARDWARE_NAME "CRAB_20171210"
 
 // a way to not have my house AP-Pwd in the build
 // if none just comment the include or create an Mines.h with ESP8266_MULTIPERSO full of wifiMulti.addAP
@@ -360,6 +366,7 @@ typedef int32_t pr_int32_t[3];
   #define WIFI_NONBLOCKING
   int WifiInit( void);
   int WifiScan( void);
+  void  WifiDocState( String& LocStr);
 #else
   #define WifiInit()
   #define WifiScan()
@@ -394,16 +401,18 @@ void TimeRunningDump( String& LocStr);
   #endif /* ESP32 */
   #ifdef ESP8266
     #include <ESP8266WiFiMulti.h>
-    #endif /* ESP8266 */
-    #endif /* WITH_WIFICLIENT */
+  #endif /* ESP8266 */
+  
+  void WifiCliDocState( String& LocStr);
+#endif /* WITH_WIFICLIENT */
 
-    #ifdef WITH_NOKIA5110
-      // PCD8544 by carlos
-      // in C:\Users\utilisateur\Documents\Arduino\libraries\PCD8544 change <avr/progblabla> by <progblabla>
-      #include <PCD8544.h>
-      // TODO_LATER ... it builds but not yet displays
-      #define WITH_SCREEN
-    #endif
+#ifdef WITH_NOKIA5110
+  // PCD8544 by carlos
+  // in C:\Users\utilisateur\Documents\Arduino\libraries\PCD8544 change <avr/progblabla> by <progblabla>
+  #include <PCD8544.h>
+  // TODO_LATER ... it builds but not yet displays
+  #define WITH_SCREEN
+#endif
 
 #ifdef WITH_NOKIA5110_ADAFRUIT
   // SCREEN 7 - Serial clock out (SCLK)
@@ -425,6 +434,7 @@ void TimeRunningDump( String& LocStr);
   PCD8544 display = PCD8544( 14, 0, 4, 5);
   // lolin 5-D1, 4-D2, 0-D3, 2-D4, 14-D5
 #endif
+
 #ifdef WITH_OLED
   // Add lib sparkfun micro oled breakout (64x48)
 
@@ -434,6 +444,7 @@ void TimeRunningDump( String& LocStr);
 
   #define WITH_SCREEN
 #endif /* WITH_OLED */
+
 #ifdef WITH_SCREEN_SSD1306 
   SSD1306 display (0x3c, 5, 4);
   int32_t ScreenLastMs;
@@ -1440,6 +1451,27 @@ void DumpIp ( String& LocStr, uint32_t IpNum) {
 }
 
 #ifdef WITH_WIFICLIENT
+
+void WifiCliDocState( String& LocStr) {
+  LocStr += "-Wifi as client:";
+  if ( WifiCliConnected()) {
+    LocStr += " connected \n ";
+    DumpIp (LocStr, WiFi.localIP());
+    LocStr += " st:" + CSTRI( WifiCliConnectState);
+    LocStr += "\n";
+  } else {
+    LocStr += " not connected ";
+    LocStr += WiFi.status();
+    LocStr += " st:" + CSTRI( WifiCliConnectState);
+    LocStr += "\n";
+
+    if ( ROLE_PLAYER == RoleGet()) {
+      LocStr += "  Player means wifi scan ... do not like client connector\n";
+    }
+  }
+}
+
+
 int WifiCliConnected() {
   if (WifiState_TOCONNECT == WifiCliConnectState) {
     return false;
@@ -1544,52 +1576,11 @@ void StateDumpBld_1( String& LocStr) {
 #endif /* RESTART_B_PIN */
 
 #ifdef WITH_WIFI
-  LocStr += "-Wifi as server:";
-  if (0 != SrvSSID[0]) {
-    if (WifiSrvConnected()) {
-      LocStr += " acivated ";
-      DumpIp (LocStr, WiFi.softAPIP());
-      LocStr += "\n";
-    } else {
-      LocStr += " not activated ";
-      LocStr += WiFi.status();
-      LocStr += "\n";
-
-      if ( ROLE_PLAYER == RoleGet()) {
-        LocStr += "  Player means wifi scan ... do not like client connector\n";
-      }
-    }
-    LocStr  +=  "  \"" ;
-    LocStr  +=  (char*)SrvSSID;
-    LocStr  +=  "\" :  SSID\n"; // D
-    LocStr  +=  "  \"";
-    LocStr  +=  (char*)SrvPWD; // ha ha won't tell you
-    if (0 != SrvPWD[0]) {
-      //  LocStr += "*******************************";
-    }
-    LocStr  +=  "\" :  PWD\n"; // E
-  } else {
-    LocStr += "  Wifi as server no SSID\n"; // check IOTMUTUAL
-  }
+  WifiDocState( LocStr);
 #endif /* WITH_WIFI */
 
 #ifdef WITH_WIFICLIENT
-  LocStr += "-Wifi as client:";
-  if ( WifiCliConnected()) {
-    LocStr += " connected ";
-    DumpIp (LocStr, WiFi.localIP());
-    LocStr += " st:" + CSTRI( WifiCliConnectState);
-    LocStr += "\n";
-  } else {
-    LocStr += " not connected ";
-    LocStr += WiFi.status();
-    LocStr += " st:" + CSTRI( WifiCliConnectState);
-    LocStr += "\n";
-
-    if ( ROLE_PLAYER == RoleGet()) {
-      LocStr += "  Player means wifi scan ... do not like client connector\n";
-    }
-  }
+  WifiCliDocState( LocStr);
 #endif /* WITH_WIFICLIENT */
 
 #ifdef WITH_OSC
@@ -3719,6 +3710,36 @@ void GraycodeInSetup() {
 
 #ifdef WITH_WIFI // ------------------------------------
 
+void  WifiDocState( String& LocStr) {
+  LocStr += "-Wifi as server:";
+  if (0 != SrvSSID[0]) {
+    if (WifiSrvConnected()) {
+      LocStr += " acivated ";
+      DumpIp (LocStr, WiFi.softAPIP());
+      LocStr += "\n";
+    } else {
+      LocStr += " not activated ";
+      LocStr += WiFi.status();
+      LocStr += "\n";
+
+      if ( ROLE_PLAYER == RoleGet()) {
+        LocStr += "  Player means wifi scan ... do not like client connector\n";
+      }
+    }
+    LocStr  +=  "  \"" ;
+    LocStr  +=  (char*)SrvSSID;
+    LocStr  +=  "\" :  SSID\n"; // D
+    LocStr  +=  "  \"";
+    LocStr  +=  (char*)SrvPWD; // ha ha won't tell you
+    if (0 != SrvPWD[0]) {
+      //  LocStr += "*******************************";
+    }
+    LocStr  +=  "\" :  PWD\n"; // E
+  } else {
+    LocStr += " no SSID\n"; // check IOTMUTUAL
+  }
+}
+
 int WifiInit( void) {
   int tpw;
   int iTmp;
@@ -4284,14 +4305,25 @@ void ScreenLoop() {
   //display.drawString(0, 0, LocStr);
 
   TimeRunningMs = millis();
-  LocStr += "-TimeRunning ";
+  LocStr += "-TRun ";
   LocStr += TimeRunningMs;
-  display.drawString(0, 0, LocStr);
-
-   LocStr = "loop ";
+  LocStr += "ms, lp ";
   LocStr += LoopUs;
   LocStr += "us\n";
-  display.drawString(0, 20, LocStr);
+  display.drawString(0, 0, LocStr);
+
+  LocStr = "";
+  #ifdef WITH_WIFI
+    WifiDocState( LocStr);
+  #endif
+  #ifdef WITH_WIFICLIENT
+    WifiCliDocState( LocStr);
+  #endif
+  LocStr += BEN_TAG;
+  LocStr += CSTRIn( 3, NodeGet());
+  LocStr += "\n";
+
+  display.drawString(0, 12, LocStr);
   
   display.display();
 }
@@ -4913,12 +4945,11 @@ void setup() {
   Serial.setTimeout( 0);// ms, default 1000
   dbgprintf( 0, "Hello");
 
-  #ifdef ESP32
-    EEPROM.begin(512);// ESP : Size can be anywhere between 4 and TODO_HERE
+  #if defined( ESP8266) | defined(ESP32)
+    if (!EEPROM.begin(512)){// ESP8266 : Size can be anywhere between 4 and 4096 bytes
+      dbgprintf( 0, "ERR- fail to init eeprom");
+    }
   #endif
-#ifdef ESP8266
-  EEPROM.begin(512);// ESP : Size can be anywhere between 4 and 4096 bytes
-#endif
 
   memset( PinModes, 0xca, sizeof(PinModes));
 
