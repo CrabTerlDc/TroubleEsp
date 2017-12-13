@@ -30,7 +30,6 @@
   - 'I' 'i' input to return to sender only
   - security S1 == S2 in eeprom add and check signature for 1char Crc on osc and admin/pwd on html xxxxxnU
   - websocket support https://fr.wikipedia.org/wiki/WebSocket
-  - ESP32 eeprom not ok
   - ESP322 everything
   ... memory not so secure, power down before rx tx plugs or config is forgotten, think about trying "esp filesystem" rumors
 
@@ -118,7 +117,7 @@
   example pastille 070V 00R 87P 100m
 */
 
-#define HARDWARE_NAME "CRAB_20171210"
+#define HARDWARE_NAME "CRAB_20171204"
 
 // a way to not have my house AP-Pwd in the build
 // if none just comment the include or create an Mines.h with ESP8266_MULTIPERSO full of wifiMulti.addAP
@@ -238,17 +237,13 @@
 // 0..99, but for buttons in blind mode we will constraint node id
 #define MAX_STORY 20
 #define MAX_TRACK 20
-
-#ifndef BEN_TAG
-  #define BEN_TAG "BEN_" // 4 chars expected
-#endif
-
+#define BEN_TAG "BEN_" // 4 chars expected
 #ifndef BEN_PWD
   #define BEN_PWD "MyAdmin"
 #endif /* BEN_PWD */
 
 #ifndef ROLE_DEFAULT
-  #define ROLE_DEFAULT ROLE_IOTS
+#define ROLE_DEFAULT ROLE_IOTS
 #endif
 // -- Lib includes and const
 
@@ -659,38 +654,40 @@ char OscAddrMine[OSC_CMD_LEN];
 
 
 extern "C" {
-#ifndef ESP32
+#ifdef ESP32
   // TODO_HERE : ESP32
+#endif /* ESP32 */
+#ifdef ESP8266
   // http://espressif.com/sites/default/files/documentation/2c-esp8266_non_os_sdk_api_reference_en.pdf
   #include "user_interface.h" // Access system_phy_set_max_tpw()
-#endif /* ESP32 */
+#endif /* ESP8266 */
 }
 
 #ifdef WITH_TIMER
-  // must be after motor declarations, they often needs timers
-  // TODO_LATER : seems related to esp8266 somehow
+// must be after motor declarations, they often needs timers
+// TODO_LATER : seems related to esp8266 somehow
 
-  // http://www.switchdoc.com/2015/10/iot-esp8266-timer-tutorial-arduino-ide/
-  os_timer_t Timer;
-  uint8_t TimerActivated = 0;
+// http://www.switchdoc.com/2015/10/iot-esp8266-timer-tutorial-arduino-ide/
+os_timer_t Timer;
+uint8_t TimerActivated = 0;
 
-  void TimerStart();
-  void TimerStop();
+void TimerStart();
+void TimerStop();
 #else
-  #define TimerSetup()
-  #define TimerStart()
-  #define TimerStop()
+#define TimerSetup()
+#define TimerStart()
+#define TimerStop()
 #endif /* WITH_TIMER */
 
 
 #ifdef WITH_STEPPER_IN
-  uint8_t StepperInPins[] = WITH_STEPPER_IN;
-  #define STEPPER_IN_DIR_PIN StepperInPins[0]
-  #define STEPPER_IN_PULSE_PIN StepperInPins[1]
+uint8_t StepperInPins[] = WITH_STEPPER_IN;
+#define STEPPER_IN_DIR_PIN StepperInPins[0]
+#define STEPPER_IN_PULSE_PIN StepperInPins[1]
 
   uint32_t StepperInVal = 0;
   uint32_t StepperInUs = 0;
-  uint32_t StepperInPos = 0;
+uint32_t StepperInPos = 0;
   pr_uint32_t pr_StepperInPos;
 
   // interrupt proved to be unstable if called a lot
@@ -2866,9 +2863,7 @@ void CmdLineParse( unsigned char Ch) {
     }
   }
   if (1 == EprSet) {
-#ifdef ESP8266
     EEPROM.commit();
-#endif
     EpromSanity();
     EpromDump();
     EprSet = 0;
@@ -4946,7 +4941,7 @@ void setup() {
   dbgprintf( 0, "Hello");
 
   #if defined( ESP8266) | defined(ESP32)
-    if (!EEPROM.begin(512)){// ESP8266 : Size can be anywhere between 4 and 4096 bytes
+    if (!EEPROM.begin( 512)){// ESP : Size can be anywhere between 4 and 4096 bytes
       dbgprintf( 0, "ERR- fail to init eeprom");
     }
   #endif
