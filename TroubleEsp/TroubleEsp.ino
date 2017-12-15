@@ -220,10 +220,11 @@
 
   #define WITH_WIFI
   #define WITH_WIFICLIENT // connect other network
-  //#define WITH_IOTMUTUAL // web server
-  //#define WITH_OSC
+  #define WITH_IOTMUTUAL // web server
+  #define WITH_OSC
   #define WITH_SCREEN_SSD1306 { 0x3c, 5, 4}
-
+  //#define WITH_STEPPER {  1, 2}
+  #define WITH_TIMER
 #endif
 
 
@@ -667,8 +668,14 @@ extern "C" {
 // must be after motor declarations, they often needs timers
 // TODO_LATER : seems related to esp8266 somehow
 
-// http://www.switchdoc.com/2015/10/iot-esp8266-timer-tutorial-arduino-ide/
-os_timer_t Timer;
+  #ifdef ESP32
+    // hardware/espressif/esp32/libraries/ESP32/examples/Timer/RepeatTimer/RepeatTimer.ino
+    hw_timer_t* Timer;
+  #endif
+  #ifdef ESP8266
+    // http://www.switchdoc.com/2015/10/iot-esp8266-timer-tutorial-arduino-ide/
+    os_timer_t Timer;
+  #endif
 uint8_t TimerActivated = 0;
 
 void TimerStart();
@@ -1473,11 +1480,14 @@ int WifiCliConnected() {
   if (WifiState_TOCONNECT == WifiCliConnectState) {
     return false;
   } else {
-#ifdef ESP8266
-    return (wifiMulti.run() == WL_CONNECTED);
-#else
-    return ( WiFi.status() == WL_CONNECTED);
-#endif /* */
+    #if defined (ESP32)
+      return (WiFi.status() == WL_CONNECTED);
+      // return (wifiMulti.run() == WL_CONNECTED);
+    #elif defined( ESP8266)
+      return (wifiMulti.run() == WL_CONNECTED);
+    #else
+      return (WiFi.status() == WL_CONNECTED);
+    #endif /* */
   }
 }
 
@@ -1512,7 +1522,11 @@ int SthToConnect = 0;
 
   if (WifiState_TOCONNECT == WifiCliConnectState) {
     if (0 != CliSSID[0]) {
-      #ifdef ESP8266
+      #if defined (ESP32)
+        // sniff not ready, lock a little  ... 
+        // wifiMulti.addAP( (char*)CliSSID, (char*)CliPWD);
+        WiFi.begin( (char*)CliSSID, (char*)CliPWD);
+      #elif defined( ESP8266)
         // wifiMulti.APlistClean();
         wifiMulti.addAP( (char*)CliSSID, (char*)CliPWD);
       #else
@@ -3709,7 +3723,7 @@ void  WifiDocState( String& LocStr) {
   LocStr += "-Wifi as server:";
   if (0 != SrvSSID[0]) {
     if (WifiSrvConnected()) {
-      LocStr += " acivated ";
+      LocStr += " acivated\n";
       DumpIp (LocStr, WiFi.softAPIP());
       LocStr += "\n";
     } else {
@@ -4308,11 +4322,11 @@ void ScreenLoop() {
   display.drawString(0, 0, LocStr);
 
   LocStr = "";
-  #ifdef WITH_WIFI
-    WifiDocState( LocStr);
-  #endif
   #ifdef WITH_WIFICLIENT
     WifiCliDocState( LocStr);
+  #endif
+  #ifdef WITH_WIFI
+    WifiDocState( LocStr);
   #endif
   LocStr += BEN_TAG;
   LocStr += CSTRIn( 3, NodeGet());
@@ -4605,9 +4619,16 @@ void MotorLoop( int FromInterrupt) {
 void TimerStart();
 void TimerStop();
 void TimedInt( void* pArg);
+void TimedIntV( void);
 
 void TimerSetup() {
-  os_timer_setfn( &Timer, TimedInt, NULL);
+  #ifdef ESP32
+    Timer = timerBegin(0, 80, true);
+    timerAttachInterrupt( Timer, TimedIntV, true);
+  #endif
+  #ifdef ESP8266
+    os_timer_setfn( &Timer, TimedInt, NULL);
+  #endif
 }
 
 void TimerStart() {
@@ -4615,20 +4636,37 @@ void TimerStart() {
     //os_timer_arm( &Timer, 1, true);
     //os_timer_arm_us( &Timer, 100, true);
     // to_test
-    ets_timer_arm_new( &Timer
-#ifdef TIMER_SLICE_SU_DEF
+    #ifdef ESP32
+      timerAlarmWrite( Timer
+          #ifdef TIMER_SLICE_SU_DEF
                        , TIMER_SLICE_SU_DEF
-#else
+          #else
                        , 500
-#endif
+          #endif
+                     , true); // in ms
+      timerAlarmEnable( Timer);
+    #endif
+    #ifdef ESP8266
+      ets_timer_arm_new( &Timer
+          #ifdef TIMER_SLICE_SU_DEF
+                       , TIMER_SLICE_SU_DEF
+          #else
+                       , 500
+          #endif
                        , 1, 0); // See more at: http://www.esp8266.com/viewtopic.php?p=14853#sthash.mHhnPhpF.dpuf
+    #endif
     TimerActivated = 1;
   }
 }
 
 void TimerStop() {
   if (TimerActivated) {
-    os_timer_disarm( &Timer);
+    #ifdef ESP32
+      timerAlarmEnable( Timer);
+    #endif
+    #ifdef ESP8266
+      os_timer_disarm( &Timer);
+    #endif
     TimerActivated = 0;
   }
 }
@@ -4645,6 +4683,10 @@ void TimedInt( void* pArg) {
 #ifdef WITH_TIMER
   TimerStart();
 #endif /* WITH_TIMER */
+}
+
+void TimedIntV( void) {
+  TimedInt( NULL);
 }
 
 void AutoActivated() {
@@ -4863,9 +4905,9 @@ int Automation( void) {
   LoopUs = (LoopUs + 5 * DiffTime( LoopLastUs, CurrMicros)) / 6;
   LoopLastUs = CurrMicros;
 
-#ifndef ESP32
-  AutoActivated();
-#endif /* 0 debug */
+  #ifndef ESP32
+    AutoActivated();
+  #endif /* 0 debug */
 
   //RunOtherTasks(100);
   RunOtherTasks(0);
@@ -4940,10 +4982,13 @@ void setup() {
   Serial.setTimeout( 0);// ms, default 1000
   dbgprintf( 0, "Hello");
 
-  #if defined( ESP8266) | defined(ESP32)
+  // TODO_LATER : use EPROM_REQ_SIZE
+  #if defined( ESP32)
     if (!EEPROM.begin( 512)){// ESP : Size can be anywhere between 4 and 4096 bytes
       dbgprintf( 0, "ERR- fail to init eeprom");
     }
+  #elif defined( ESP8266)
+    EEPROM.begin( 512);// ESP : Size can be anywhere between 4 and 4096 bytes
   #endif
 
   memset( PinModes, 0xca, sizeof(PinModes));
