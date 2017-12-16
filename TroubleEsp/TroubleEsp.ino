@@ -226,7 +226,7 @@
   #define WITH_STEPPER {  25, 26} // GPIO 25 GPIO 26
   //#define WITH_TIMER
   #define WITH_ADC 12 // GPIO_12 ADC_15 TOUCH_5
-  //#define WITH_WS2812 25 // TODO_HERE - blocking
+  #define WITH_WS2812 36 // TODO_HERE - blocking
 #endif
 
 
@@ -4000,13 +4000,16 @@ int WifiScan( void) {
 
 #ifdef WITH_SWITCH // -----------------------
 int SwitchInit( void) {
-#if (16 == SWITCH_LINE)
-  // rem : if SWITCH_LINE is 16 on ESP8266 a physical pullup (10kOhm?) is required
-  dbgprintf( 2, "SwitchInit 16\r\n");
-  MyPinmode( SWITCH_LINE, INPUT);
-#else
-  MyPinmode( SWITCH_LINE, INPUT_PULLUP);
-#endif
+  #ifdef ESP8266
+    // hardware specific
+    #if (16 == SWITCH_LINE)
+      // rem : if SWITCH_LINE is 16 on ESP8266 a physical pullup (10kOhm?) is required
+      dbgprintf( 2, "SwitchInit 16\r\n");
+      MyPinmode( SWITCH_LINE, INPUT);
+    #else
+      MyPinmode( SWITCH_LINE, INPUT_PULLUP);
+    #endif
+  #endif /* ESP8266 */
   SwitchState = HIGH;
   SwitchTimePushmillis = millis();
   SwitchTimeRelmillis  = millis();
@@ -4049,9 +4052,9 @@ bool SwitchIsPressed( void) {
     if (abs(CurrTimeMillis - SwitchTimeRelmillis) > SWITCH_GLITCH) { // not released more than SWITCH_GLITCH/1000 sec
       SwitchState = LOW; // not released for a while means firmly pushed
       SwitchTimePushmillis = CurrTimeMillis - SwShut - 100;
-#ifdef WITH_OSC
-      OscSendCmd( 1);
-#endif /* WITH_OSC */
+      #ifdef WITH_OSC
+        OscSendCmd( 1);
+      #endif /* WITH_OSC */
     }
     if (abs(CurrTimeMillis - SwitchTimeRelmillis) > 2 * SWITCH_GLITCH) {
       // TODO_LATER : don't work SwitchTimeRelmillis = CurrTimeMillis - 2*SWITCH_GLITCH; // never let a chance to cycle
@@ -4063,9 +4066,9 @@ bool SwitchIsPressed( void) {
     if (abs(CurrTimeMillis - SwitchTimePushmillis) > SwShut) { // not pushed more than SW_SHUT/1000 sec
       SwitchState = HIGH; // not pushed for a while means released
       SwitchTimeRelmillis = CurrTimeMillis - SWITCH_GLITCH - 100;
-#ifdef WITH_OSC
-      OscSendCmd( 2);
-#endif /* WITH_OSC */
+      #ifdef WITH_OSC
+        OscSendCmd( 2);
+      #endif /* WITH_OSC */
     }
     if (abs(CurrTimeMillis - SwitchTimePushmillis) > 2 * SwShut) {
       // TODO_LATER : don't work SwitchTimePushmillis = CurrTimeMillis - 2*SwShut; // never let a chance to cycle
@@ -4104,11 +4107,11 @@ void SwitchParse( ) {
           NodeSet( NodeGet() + 1);
         }
       } // end ROLE_MULTI
-#ifdef WITH_DFPLAYER
-      TrackRun();
-#else
-      dbgprintf( 3, "Can't play %i %i due to no DFP\r\n", NodeGet(), PlayersId[0]);
-#endif
+      #ifdef WITH_DFPLAYER
+        TrackRun();
+      #else
+        dbgprintf( 3, "Can't play %i %i due to no DFP\r\n", NodeGet(), PlayersId[0]);
+      #endif
       Activity( ACT_PLAY);
       PlayerRunning = 1;
     }
@@ -4162,9 +4165,9 @@ void RestartSwitchParse( ) {
     dbgprintf( 2, "Restart SW pressed\r\n");
     if (ROLE_MULTI == RoleGet()) {// solo plays track per track
       NodeSet( MaxGet()); // will go 1 next head push
-#ifdef RESTART_B_PIN
-      RestartedGuy = 0;
-#endif
+      #ifdef RESTART_B_PIN
+        RestartedGuy = 0;
+      #endif
     } // end ROLE_MULTI
   } else {
     //dbgprintf( 3,"SW released\r\n");
@@ -4233,21 +4236,21 @@ void AdcProcess( uint8_t Act) {
                 || ((AdcLastSent != 0) && (AdcVal == 0))
             )  ) {
     // dbgprintf( 1, "Adc %5i\n", AdcVal);
-#ifdef WITH_OSC
+  #ifdef WITH_OSC
     // send to osc, osc can drive motors, including this one if set some "*" in the destination
     OscSendCmd( 3);
-#else
-#if (MOTOR_NB > 0)
-    // send direct to motor
-    for (Idx = 0; Idx < MOTOR_NB; Idx++) {
-      Motor_t* pMotor = &(MotorArray[Idx]);
-      pr_uint32_write( pMotor->WishP2, AdcVal);
-      if(pMotor->Order < 3) {
-        pMotor->Order++;
+  #else
+    #if (MOTOR_NB > 0)
+      // send direct to motor
+      for (Idx = 0; Idx < MOTOR_NB; Idx++) {
+        Motor_t* pMotor = &(MotorArray[Idx]);
+        pr_uint32_write( pMotor->WishP2, AdcVal);
+        if(pMotor->Order < 3) {
+          pMotor->Order++;
+        }
       }
-    }
-#endif /* WITH_MOTOR */
-#endif
+    #endif /* WITH_MOTOR */
+  #endif
     AdcLastSent = AdcVal;
   }
 }
@@ -4684,18 +4687,22 @@ void AutoActivated() {
     //dbgprintf( 2, "VectX %i, VectY %i\n", VectX, VectY);
     
     #ifdef WITH_MOTOR
-      pMotor = &(MotorArray[0]);
-      pr_uint32_write( pMotor->WishDTms, 5000);
-      pr_int32_write( pMotor->WishP2, MyX);
-      if(pMotor->Order < 3) {
-        pMotor->Order++;
+      if (MOTOR_NB >0) {
+        pMotor = &(MotorArray[0]);
+        pr_uint32_write( pMotor->WishDTms, 5000);
+        pr_int32_write( pMotor->WishP2, MyX);
+        if(pMotor->Order < 3) {
+          pMotor->Order++;
+        }
       }
 
-      pMotor = &(MotorArray[1]);
-      pr_uint32_write( pMotor->WishDTms, 5000);
-      pr_int32_write( pMotor->WishP2, MyY);
-      if(pMotor->Order < 3) {
-        pMotor->Order++;
+      if (MOTOR_NB >1) {
+        pMotor = &(MotorArray[1]);
+        pr_uint32_write( pMotor->WishDTms, 5000);
+        pr_int32_write( pMotor->WishP2, MyY);
+        if(pMotor->Order < 3) {
+          pMotor->Order++;
+        }
       }
 
       #ifdef WITH_STOPPER
@@ -4705,10 +4712,11 @@ void AutoActivated() {
           dbgprintf( 2, "set min\n");
           //SensY = 1;
           MyY = -1;
-          pMotor = &(MotorArray[1]);
-          pr_int32_write( pMotor->WishP2, MyY);
-          pMotor->Order=5;
-        
+          if (MOTOR_NB >1) {
+            pMotor = &(MotorArray[1]);
+            pr_int32_write( pMotor->WishP2, MyY);
+            pMotor->Order=5;
+          }
         }
       }
 
@@ -4718,9 +4726,11 @@ void AutoActivated() {
           dbgprintf( 2, "set max\n");
           MyY = MaxY+1;
           //SensY = -1;
-          pMotor = &(MotorArray[1]);
-          pr_int32_write( pMotor->WishP2, MyY);
-          pMotor->Order=5;
+          if (MOTOR_NB >1) {
+            pMotor = &(MotorArray[1]);
+            pr_int32_write( pMotor->WishP2, MyY);
+            pMotor->Order=5;
+          }
         }
       }
       //dbgprintf( 2, "MyY %i ", MyY);
