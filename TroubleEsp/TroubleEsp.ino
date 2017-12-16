@@ -223,8 +223,10 @@
   #define WITH_IOTMUTUAL // web server
   #define WITH_OSC
   #define WITH_SCREEN_SSD1306 { 0x3c, 5, 4}
-  //#define WITH_STEPPER {  1, 2}
-  #define WITH_TIMER
+  #define WITH_STEPPER {  25, 26} // GPIO 25 GPIO 26
+  //#define WITH_TIMER
+  #define WITH_ADC 12 // GPIO_12 ADC_15 TOUCH_5
+  //#define WITH_WS2812 25 // TODO_HERE - blocking
 #endif
 
 
@@ -1699,9 +1701,9 @@ void StateDumpBld_2( String& LocStr) {
 
 #ifdef WITH_ADC
   LocStr  +=  "-Adc:" + CSTRI( AdcVal) + ", pin:" + CSTRI(A0);
-#ifndef WITH_WIFI
-  LocStr  +=  " Raw:" + CSTRI( analogRead(WITH_ADC)); // suspect ADC and http weirdness
-#endif /* WITH_WIFI */
+  #ifndef WITH_WIFI
+    LocStr  +=  " Raw:" + CSTRI( analogRead(WITH_ADC)); // suspect ADC and http weirdness
+  #endif /* WITH_WIFI */
   LocStr  +=  "\n";
 #endif /* WITH_ADC */
 
@@ -4314,11 +4316,12 @@ void ScreenLoop() {
   //display.drawString(0, 0, LocStr);
 
   TimeRunningMs = millis();
-  LocStr += "-TRun ";
-  LocStr += TimeRunningMs;
-  LocStr += "ms, lp ";
+  LocStr += "- lp ";
   LocStr += LoopUs;
-  LocStr += "us\n";
+  LocStr += "us";
+  LocStr += ", TRun ";
+  LocStr += TimeRunningMs;
+  LocStr += "ms\n";
   display.drawString(0, 0, LocStr);
 
   LocStr = "";
@@ -4673,16 +4676,16 @@ void TimerStop() {
 #endif /* WITH_TIMER */
 
 void TimedInt( void* pArg) {
-#ifdef WITH_TIMER
-  TimerStop();
-#endif /* WITH_TIMER */
+  #ifdef WITH_TIMER
+    TimerStop();
+  #endif /* WITH_TIMER */
   // TODO_HERE   StepperSpeedPerMilSec ; // ticks per hour if drived per speed
-#ifdef WITH_MOTOR
-  MotorLoop( 1);
-#endif /* WITH_MOTOR */
-#ifdef WITH_TIMER
-  TimerStart();
-#endif /* WITH_TIMER */
+  #ifdef WITH_MOTOR
+    MotorLoop( 1);
+  #endif /* WITH_MOTOR */
+  #ifdef WITH_TIMER
+    TimerStart();
+  #endif /* WITH_TIMER */
 }
 
 void TimedIntV( void) {
@@ -4700,7 +4703,7 @@ void AutoActivated() {
     Motor_t* pMotor;
   #endif /* WITH_MOTOR */
   int K;
-    uint32_t Rand;
+  uint32_t Rand;
 
   
   if ( DiffTime(CurMs, LastMs) > 500) {
@@ -4713,67 +4716,67 @@ void AutoActivated() {
     } else{
       MyX += VectX;
     }
-  //dbgprintf( 2, "MyX %i, MyY %i", MyX, MyY);
-  //dbgprintf( 2, "VectX %i, VectY %i\n", VectX, VectY);
+    //dbgprintf( 2, "MyX %i, MyY %i", MyX, MyY);
+    //dbgprintf( 2, "VectX %i, VectY %i\n", VectX, VectY);
     
-#ifdef WITH_MOTOR
-    pMotor = &(MotorArray[0]);
-    pr_uint32_write( pMotor->WishDTms, 5000);
-    pr_int32_write( pMotor->WishP2, MyX);
-    if(pMotor->Order < 3) {
-      pMotor->Order++;
-    }
+    #ifdef WITH_MOTOR
+      pMotor = &(MotorArray[0]);
+      pr_uint32_write( pMotor->WishDTms, 5000);
+      pr_int32_write( pMotor->WishP2, MyX);
+      if(pMotor->Order < 3) {
+        pMotor->Order++;
+      }
 
-    pMotor = &(MotorArray[1]);
-    pr_uint32_write( pMotor->WishDTms, 5000);
-    pr_int32_write( pMotor->WishP2, MyY);
-    if(pMotor->Order < 3) {
-      pMotor->Order++;
-    }
+      pMotor = &(MotorArray[1]);
+      pr_uint32_write( pMotor->WishDTms, 5000);
+      pr_int32_write( pMotor->WishP2, MyY);
+      if(pMotor->Order < 3) {
+        pMotor->Order++;
+      }
 
-  #ifdef WITH_STOPPER
-    if(HIGH != digitalRead( StopperPins[0])) {
-      dbgprintf( 2, "touch min\n");
-      if (SensY < 0) {
-        dbgprintf( 2, "set min\n");
-        //SensY = 1;
-        MyY = -1;
-        pMotor = &(MotorArray[1]);
-        pr_int32_write( pMotor->WishP2, MyY);
-        pMotor->Order=5;
+      #ifdef WITH_STOPPER
+      if(HIGH != digitalRead( StopperPins[0])) {
+        dbgprintf( 2, "touch min\n");
+        if (SensY < 0) {
+          dbgprintf( 2, "set min\n");
+          //SensY = 1;
+          MyY = -1;
+          pMotor = &(MotorArray[1]);
+          pr_int32_write( pMotor->WishP2, MyY);
+          pMotor->Order=5;
         
+        }
       }
-    }
 
-    if(HIGH != digitalRead( StopperPins[1])) {
-      dbgprintf( 2, "touch max\n");
-      if (SensY > 0) {
-        dbgprintf( 2, "set max\n");
-        MyY = MaxY+1;
-        //SensY = -1;
-        pMotor = &(MotorArray[1]);
-        pr_int32_write( pMotor->WishP2, MyY);
-        pMotor->Order=5;
+      if(HIGH != digitalRead( StopperPins[1])) {
+        dbgprintf( 2, "touch max\n");
+        if (SensY > 0) {
+          dbgprintf( 2, "set max\n");
+          MyY = MaxY+1;
+          //SensY = -1;
+          pMotor = &(MotorArray[1]);
+          pr_int32_write( pMotor->WishP2, MyY);
+          pMotor->Order=5;
+        }
       }
-    }
-    //dbgprintf( 2, "MyY %i ", MyY);
-    //dbgprintf( 2, "LastPosY %i \n", MotorArray[1].LastPos);
-    /*
-    if(HIGH != digitalRead( StopperPins[1])) {
-      dbgprintf( 2, "touch max\n");
-      StopperMax = (StopperMax*2+1000)/3;
-    } else {
-      StopperMax = (StopperMax*2+0)/3;
+      //dbgprintf( 2, "MyY %i ", MyY);
+      //dbgprintf( 2, "LastPosY %i \n", MotorArray[1].LastPos);
+      /*
+      if(HIGH != digitalRead( StopperPins[1])) {
+        dbgprintf( 2, "touch max\n");
+        StopperMax = (StopperMax*2+1000)/3;
+      } else {
+        StopperMax = (StopperMax*2+0)/3;
       
-    }
-    //dbgprintf( 2, "max %i\n", StopperMax);
-    if (StopperMax > 500) {
-      dbgprintf( 2, "real max\n");
-            MyY = MaxY+1;
-    }
-    */
-  #endif /* WITH_STOPPER */
-#endif /* WITH_MOTOR */
+      }
+      //dbgprintf( 2, "max %i\n", StopperMax);
+      if (StopperMax > 500) {
+        dbgprintf( 2, "real max\n");
+              MyY = MaxY+1;
+      }
+      */
+      #endif /* WITH_STOPPER */
+    #endif /* WITH_MOTOR */
 
     if ((MyX > MaxX) && (SensX > 0)) {
       VectX = -SpeedX;
