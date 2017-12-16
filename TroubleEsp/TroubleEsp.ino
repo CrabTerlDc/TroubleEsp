@@ -412,39 +412,9 @@ void TimeRunningDump( String& LocStr);
   #define WITH_SCREEN
 #endif
 
-#ifdef WITH_NOKIA5110_ADAFRUIT
-  // SCREEN 7 - Serial clock out (SCLK)
-  // SCREEN 6 - Serial data out (DIN)
-  // SCREEN 5 - Data/Command select (D/C)
-  // SCREEN 4 - LCD chip select (CS)
-  // SCREEN 3 - LCD reset (RST)
-  // int8_t SCLK, int8_t DIN, int8_t DC, int8_t RST
-  Adafruit_PCD8544 display = Adafruit_PCD8544( 14, 0, 4, 5, 3);
-  // lolin 5-D1, 4-D2, 0-D3, 2-D4, 14-D5
-#endif
-#ifdef WITH_NOKIA5110
-  // SCREEN 7 - Serial clock out (SCLK)
-  // SCREEN 6 - Serial data out (DIN)
-  // SCREEN 5 - Data/Command select (D/C)
-  // SCREEN 4 - LCD chip select (CS)
-  // SCREEN 3 - LCD reset (RST)
-  // int8_t SCLK, int8_t DIN, int8_t DC, int8_t RST
-  PCD8544 display = PCD8544( 14, 0, 4, 5);
-  // lolin 5-D1, 4-D2, 0-D3, 2-D4, 14-D5
-#endif
-
-#ifdef WITH_OLED
-  // Add lib sparkfun micro oled breakout (64x48)
-
-  #include <Wire.h>  // Include Wire if you're using I2C
-  #include <SPI.h>  // Include SPI if you're using SPI
-  //#include <SFE_MicroOLED.h>  // Include the SFE_MicroOLED library
-
-  #define WITH_SCREEN
-#endif /* WITH_OLED */
-
 #ifdef WITH_SCREEN_SSD1306 
-  SSD1306 display (0x3c, 5, 4);
+  uint8_t ScreenParams[] = WITH_SCREEN_SSD1306;
+  SSD1306 display(ScreenParams[0],ScreenParams[1],ScreenParams[2]);
   int32_t ScreenLastMs;
 #endif
 
@@ -543,8 +513,8 @@ uint8_t DfpPins[] = WITH_DFPLAYER;
 #define WIFI_PWDLEN 64
 
 #ifdef WITH_WIFI
-char SrvSSID[WIFI_IDLEN];// up to 32
-char SrvPWD[WIFI_PWDLEN];// theorically up to 63 but...
+  char SrvSSID[WIFI_IDLEN];// up to 32
+  char SrvPWD[WIFI_PWDLEN];// theorically up to 63 but...
 #endif /* WITH_WIFI */
 
 #ifdef WITH_SWITCH
@@ -566,28 +536,28 @@ char SrvPWD[WIFI_PWDLEN];// theorically up to 63 but...
 // restart pin reset the solo mode to track 1, solo mode runx between 1 and Max
 // #define RESTART_PIN 4
 #ifdef RESTART_PIN
-// Esp12 RESTART_PIN -> restart switch 1 (normally open)
-// Gnd -> restart switch 4
-long RestartSwitchState;
-long RestartSwitchTimemillis;
+  // Esp12 RESTART_PIN -> restart switch 1 (normally open)
+  // Gnd -> restart switch 4
+  long RestartSwitchState;
+  long RestartSwitchTimemillis;
 #endif /* RESTART_PIN */
 
 // restart pin B reset the solo mode to track Max Track, so solo mode runs between Max+1 and 2xMax
 // #define RESTART_B_PIN 5
 #ifdef RESTART_B_PIN
-// Esp12 RESTART_B_PIN -> restart switch 1 (normally open)
-// Gnd -> restart switch 5
-long RestartBSwitchState;
-long RestartBSwitchTimemillis;
-int RestartedGuy = 0;
+  // Esp12 RESTART_B_PIN -> restart switch 1 (normally open)
+  // Gnd -> restart switch 5
+  long RestartBSwitchState;
+  long RestartBSwitchTimemillis;
+  int RestartedGuy = 0;
 #endif /* RESTART_PIN */
 
 #ifdef WITH_ADC
-uint16_t AdcVal = 0;  // 0..9999
-#define ADC_SMOOTH 2 // smoothing v+x/x+1
-uint32_t AdcLastReadMs = 0;
-uint32_t AdcLastSent = 0;
-#define OSC_DEFAULT_CMD3 "S"
+  uint16_t AdcVal = 0;  // 0..9999
+  #define ADC_SMOOTH 2 // smoothing v+x/x+1
+ uint32_t AdcLastReadMs = 0;
+  uint32_t AdcLastSent = 0;
+  #define OSC_DEFAULT_CMD3 "S"
 #endif /* WITH_ADC */
 
 // static config
@@ -638,21 +608,21 @@ uint32_t AdcLastSent = 0;
   uint32_t OscCmdSequence = 0;
   uint8_t OscReply = 0;
 
-#define OSC_DEFAULT_ADDR "/"BEN_TAG
-#define OSC_DEFAULT_CMD1 "h"
-#define OSC_DEFAULT_CMD2 "H"
-#define OSC_PORT 8000
-OSCErrorCode OscError;
-#define OSC_CMD_LEN 30
-char OscAddr[OSC_CMD_LEN];
-#ifdef WITH_SWITCH
-char OscCmd1[OSC_CMD_LEN]; // pushed
-char OscCmd2[OSC_CMD_LEN]; // released
-#endif /* WITH_SWITCH */
-#ifdef WITH_ADC
-char OscCmd3[OSC_CMD_LEN]; // ADC
-#endif /* WITH_ADC */
-char OscAddrMine[OSC_CMD_LEN];
+  #define OSC_DEFAULT_ADDR "/"BEN_TAG
+  #define OSC_DEFAULT_CMD1 "h"
+  #define OSC_DEFAULT_CMD2 "H"
+  #define OSC_PORT 8000
+  OSCErrorCode OscError;
+  #define OSC_CMD_LEN 30
+  char OscAddr[OSC_CMD_LEN];
+  #ifdef WITH_SWITCH
+    char OscCmd1[OSC_CMD_LEN]; // pushed
+    char OscCmd2[OSC_CMD_LEN]; // released
+  #endif /* WITH_SWITCH */
+  #ifdef WITH_ADC
+    char OscCmd3[OSC_CMD_LEN]; // ADC
+  #endif /* WITH_ADC */
+  char OscAddrMine[OSC_CMD_LEN];
 #endif /* WITH_OSC */
 
 
@@ -667,8 +637,8 @@ extern "C" {
 }
 
 #ifdef WITH_TIMER
-// must be after motor declarations, they often needs timers
-// TODO_LATER : seems related to esp8266 somehow
+  // must be after motor declarations, they often needs timers
+  // TODO_LATER : seems related to esp8266 somehow
 
   #ifdef ESP32
     // hardware/espressif/esp32/libraries/ESP32/examples/Timer/RepeatTimer/RepeatTimer.ino
@@ -678,25 +648,25 @@ extern "C" {
     // http://www.switchdoc.com/2015/10/iot-esp8266-timer-tutorial-arduino-ide/
     os_timer_t Timer;
   #endif
-uint8_t TimerActivated = 0;
+  uint8_t TimerActivated = 0;
 
-void TimerStart();
-void TimerStop();
+  void TimerStart();
+  void TimerStop();
 #else
-#define TimerSetup()
-#define TimerStart()
-#define TimerStop()
+  #define TimerSetup()
+  #define TimerStart()
+ #define TimerStop()
 #endif /* WITH_TIMER */
 
 
 #ifdef WITH_STEPPER_IN
-uint8_t StepperInPins[] = WITH_STEPPER_IN;
-#define STEPPER_IN_DIR_PIN StepperInPins[0]
-#define STEPPER_IN_PULSE_PIN StepperInPins[1]
+  uint8_t StepperInPins[] = WITH_STEPPER_IN;
+  #define STEPPER_IN_DIR_PIN StepperInPins[0]
+  #define STEPPER_IN_PULSE_PIN StepperInPins[1]
 
   uint32_t StepperInVal = 0;
   uint32_t StepperInUs = 0;
-uint32_t StepperInPos = 0;
+  uint32_t StepperInPos = 0;
   pr_uint32_t pr_StepperInPos;
 
   // interrupt proved to be unstable if called a lot
@@ -812,31 +782,25 @@ uint32_t StepperInPos = 0;
 #endif /* WITH_MOTOR */
 
 #ifdef WITH_GRAYCODE_IN
-uint8_t GrayPins[] = WITH_GRAYCODE_IN;
-#define GRAYCODE_IN_A_PIN GrayPins[0]
-#define GRAYCODE_IN_B_PIN GrayPins[1]
+  uint8_t GrayPins[] = WITH_GRAYCODE_IN;
+  #define GRAYCODE_IN_A_PIN GrayPins[0]
+  #define GRAYCODE_IN_B_PIN GrayPins[1]
 
-uint32_t GrayPos = 0;
-pr_uint32_t PrGrayPos;
-uint8_t GrayA = 0;
-uint8_t GrayB = 0;
+  uint32_t GrayPos = 0;
+  pr_uint32_t PrGrayPos;
+  uint8_t GrayA = 0;
+  uint8_t GrayB = 0;
 #endif /* WITH_GRAYCODE_IN */
 
 #ifdef WITH_WS2812
-#define PIX_NB (1+PLAYERS_NB)
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel( PIX_NB, WITH_WS2812, NEO_GRB + NEO_KHZ800);
-uint8_t PixView;
+  #define PIX_NB (1+PLAYERS_NB)
+  Adafruit_NeoPixel pixels = Adafruit_NeoPixel( PIX_NB, WITH_WS2812, NEO_GRB + NEO_KHZ800);
+  uint8_t PixView;
 #endif /*WITH_WS2812 */
 
 #ifdef WITH_LED_SHOW_WIFI
-uint8_t PixState;
+  uint8_t PixState;
 #endif /* WITH_LED_SHOW_WIFI */
-
-#ifdef WITH_OLED
-  MicroOLED display(D5, D1, D2);
-
-  //SSD1306  display(0x3c, D1, D2);
-#endif /* WITH_OLED */
 
 // Acquired by power
 uint8_t PlayersId[PLAYERS_NB];
@@ -852,19 +816,19 @@ int RssiTmp;
 int RssiContrib;
 
 #ifdef WITH_DFPLAYER
-SoftwareSerial DFPSerial( DfpPins[0] , DfpPins[1] ); // RX, TX
-// test frame to inject data
-uint8_t DFPMockFrame[10];
-uint8_t DFPMockFrameCnt = 0;
+  SoftwareSerial DFPSerial( DfpPins[0] , DfpPins[1] ); // RX, TX
+  // test frame to inject data
+  uint8_t DFPMockFrame[10];
+  uint8_t DFPMockFrameCnt = 0;
 #endif /* WITH_DFPLAYER */
 int PlayerRunning = 0;
 char PlayerHealth = 0;
 
 #ifdef WITH_SWITCH
-long SwitchTimePushmillis = 0;
-long SwitchTimeRelmillis = 0;
-long SwitchTimeTestmillis = 0;
-bool SwitchState = 0;
+  long SwitchTimePushmillis = 0;
+  long SwitchTimeRelmillis = 0;
+  long SwitchTimeTestmillis = 0;
+  bool SwitchState = 0;
 #endif /* WITH_SWITCH */
 
 // BUILTIN_LED is the pin with the internal LED (which is also the TXD pin; so we cannot use Serial.print() at the same time)
@@ -3790,37 +3754,37 @@ int WifiInit( void) {
   switch (RoleGet()) {
     case ROLE_TEST :
     case ROLE_PLAYER :
-#ifdef WITH_IOTMUTUAL
-      NodeNum = NodeGet();
-      memcpy( SrvSSID, "ITS_", 4);
-      SrvSSID[4] = '0' + (NodeNum / 100) % 10;
-      SrvSSID[5] = '0' + (NodeNum / 10) % 10;
-      SrvSSID[6] = '0' + (NodeNum    ) % 10;
-      SrvSSID[7] = 0;
-#endif /* WITH_IOTMUTUAL */
+      #ifdef WITH_IOTMUTUAL
+        NodeNum = NodeGet();
+        memcpy( SrvSSID, "ITS_", 4);
+        SrvSSID[4] = '0' + (NodeNum / 100) % 10;
+        SrvSSID[5] = '0' + (NodeNum / 10) % 10;
+        SrvSSID[6] = '0' + (NodeNum    ) % 10;
+        SrvSSID[7] = 0;
+      #endif /* WITH_IOTMUTUAL */
       break;
     case ROLE_SOLO :
     case ROLE_MULTI :
-#ifdef WITH_IOTMUTUAL
-      memcpy( SrvSSID, "ITS_", 5);
-      NodeNum = WiFi.macAddress()[16] * 0x10 + WiFi.macAddress()[17]; // try to build something different from a device to another
-      SrvSSID[4] = '0' + (NodeNum / 100) % 10;
-      SrvSSID[5] = '0' + (NodeNum / 10) % 10;
-      SrvSSID[6] = '0' + (NodeNum    ) % 10;
-      SrvSSID[7] = 0;
-#endif /* WITH_IOTMUTUAL */
+      #ifdef WITH_IOTMUTUAL
+        memcpy( SrvSSID, "ITS_", 5);
+        NodeNum = WiFi.macAddress()[16] * 0x10 + WiFi.macAddress()[17]; // try to build something different from a device to another
+        SrvSSID[4] = '0' + (NodeNum / 100) % 10;
+        SrvSSID[5] = '0' + (NodeNum / 10) % 10;
+        SrvSSID[6] = '0' + (NodeNum    ) % 10;
+        SrvSSID[7] = 0;
+      #endif /* WITH_IOTMUTUAL */
       // no wifi, just button and sound
       break;
     case ROLE_IOTS :
     case ROLE_IOTM :
-#ifdef WITH_IOTMUTUAL
-      NodeNum = NodeGet();
-      memcpy( SrvSSID, BEN_TAG, 4);
-      SrvSSID[4] = '0' + (NodeNum / 100) % 10;
-      SrvSSID[5] = '0' + (NodeNum / 10) % 10;
-      SrvSSID[6] = '0' + (NodeNum    ) % 10;
-      SrvSSID[7] = 0;
-#endif /* WITH_IOTMUTUAL */
+      #ifdef WITH_IOTMUTUAL
+        NodeNum = NodeGet();
+        memcpy( SrvSSID, BEN_TAG, 4);
+        SrvSSID[4] = '0' + (NodeNum / 100) % 10;
+        SrvSSID[5] = '0' + (NodeNum / 10) % 10;
+        SrvSSID[6] = '0' + (NodeNum    ) % 10;
+        SrvSSID[7] = 0;
+      #endif /* WITH_IOTMUTUAL */
       break;
     case ROLE_PASSENGER :
       NodeNum = NodeGet();
@@ -3843,27 +3807,27 @@ int WifiInit( void) {
       break;
   }
   if (0 != SrvSSID[0]) {
-#ifdef WITH_WIFICLIENT
-    if (0 == memcmp( BEN_TAG, CliSSID, 4)) {
-      dbgprintf( 2, "Connection between relatives detected, try to serve 192.168.5.1\n", SrvSSID); // instead of 192.168.5.1
-      WiFi.softAPConfig( 0x0105A8C0, 0x0105A8C0, 0x00FFFFFF);
-    } else {
+    #ifdef WITH_WIFICLIENT
+      if (0 == memcmp( BEN_TAG, CliSSID, 4)) {
+        dbgprintf( 2, "Connection between relatives detected, try to serve 192.168.5.1\n", SrvSSID); // instead of 192.168.5.1
+        WiFi.softAPConfig( 0x0105A8C0, 0x0105A8C0, 0x00FFFFFF);
+      } else {
+        dbgprintf( 2, "Try to serve 192.168.4.1\n", SrvSSID); // default
+      }
+    #else
       dbgprintf( 2, "Try to serve 192.168.4.1\n", SrvSSID); // default
-    }
-#else
-    dbgprintf( 2, "Try to serve 192.168.4.1\n", SrvSSID); // default
-#endif /* WITH_WIFICLIENT */
+    #endif /* WITH_WIFICLIENT */
 
     WiFi.softAP( SrvSSID, SrvPWD);
     dbgprintf( 3, "Wifi AP %s started\n", SrvSSID);
   }
 
-#ifdef WITH_OSC
-  memset( OscAddrMine, 0, OSC_CMD_LEN);
-  OscAddrMine[0] = '/';
-  memcpy( OscAddrMine + 1, SrvSSID, min( OSC_CMD_LEN - 1, WIFI_IDLEN));
-  OscAddrMine[ OSC_CMD_LEN - 1] = 0;
-#endif /* WITH_OSC */
+  #ifdef WITH_OSC
+    memset( OscAddrMine, 0, OSC_CMD_LEN);
+    OscAddrMine[0] = '/';
+    memcpy( OscAddrMine + 1, SrvSSID, min( OSC_CMD_LEN - 1, WIFI_IDLEN));
+    OscAddrMine[ OSC_CMD_LEN - 1] = 0;
+  #endif /* WITH_OSC */
 
   return ( 0);
 }
@@ -3875,36 +3839,36 @@ int WifiScan( void) {
   char szId[WIFI_IDLEN];
 
   //dbgprintf( 2,"WifiScan()\r\n");
-#ifdef WITH_WIFI
-#ifdef WIFI_NONBLOCKING
-  n = WiFi.scanComplete();
-  if ( WIFI_SCAN_RUNNING == n) {
-    //dbgprintf( 2, "WifiScan Running %i\r\n", n);
-    return (0);
-  } else if (n < 0) {
-    dbgprintf( 2, "WifiScan error milord %i\r\n", n);
-    n = WiFi.scanNetworks( true);
-    //dbgprintf( 2, "WifiScan NetC %i\r\n", n);
-    return (0);
-  }
-  //dbgprintf( 2, "WifiScan completed %i\r\n", n);
-  // https://github.com/esp8266/Arduino/blob/d108a6ec30193a8e44eb9c72efc7a55853b54f09/hardware/esp8266com/esp8266/libraries/ESP8266WiFi/src/ESP8266WiFiMulti.cpp#L74
-#else
-  n = WiFi.scanNetworks(); // sync, cost +- 4 seconds
-  // dbgprintf( 2, "WifiScan Blocking %i\r\n", n);
-#endif /* WIFI_NONBLOCKING */
+  #ifdef WITH_WIFI
+    #ifdef WIFI_NONBLOCKING
+      n = WiFi.scanComplete();
+      if ( WIFI_SCAN_RUNNING == n) {
+        //dbgprintf( 2, "WifiScan Running %i\r\n", n);
+        return (0);
+      } else if (n < 0) {
+        dbgprintf( 2, "WifiScan error milord %i\r\n", n);
+        n = WiFi.scanNetworks( true);
+        //dbgprintf( 2, "WifiScan NetC %i\r\n", n);
+        return (0);
+      }
+      //dbgprintf( 2, "WifiScan completed %i\r\n", n);
+      // https://github.com/esp8266/Arduino/blob/d108a6ec30193a8e44eb9c72efc7a55853b54f09/hardware/esp8266com/esp8266/libraries/ESP8266WiFi/src/ESP8266WiFiMulti.cpp#L74
+    #else
+      n = WiFi.scanNetworks(); // sync, cost +- 4 seconds
+      // dbgprintf( 2, "WifiScan Blocking %i\r\n", n);
+    #endif /* WIFI_NONBLOCKING */
 
 
-  if (n < 0) { // WIFI_SCAN_RUNNING -1? WIFI_SCAN_FAILED -2?
-    //dbgprintf( vLev+1, "WIFI_SCAN_FAILED %i\r\n", WIFI_SCAN_FAILED);
-    //dbgprintf( vLev+1, "Scan %i\r\n", n);
-    return ( 0);
-  }
-  dbgprintf( vLev + 1, "Got Scan %i\r\n", n);
-#else
-  n = 0;
-  dbgprintf( vLev + 1, "ERR- no hardware, no scan");
-#endif
+    if (n < 0) { // WIFI_SCAN_RUNNING -1? WIFI_SCAN_FAILED -2?
+      //dbgprintf( vLev+1, "WIFI_SCAN_FAILED %i\r\n", WIFI_SCAN_FAILED);
+      //dbgprintf( vLev+1, "Scan %i\r\n", n);
+      return ( 0);
+    }
+    dbgprintf( vLev + 1, "Got Scan %i\r\n", n);
+  #else
+    n = 0;
+    dbgprintf( vLev + 1, "ERR- no hardware, no scan");
+  #endif
 
   if (n == 0) {
     dbgprintf( vLev + 1, "no networks found\r\n");
@@ -4291,7 +4255,8 @@ void AdcProcess( uint8_t Act) {
 
 #ifdef WITH_SCREEN
 void ScreenSetup() {
-
+  
+  //pDisplay = new SSD1306( ScreenParams[0], ScreenParams[1], ScreenParams[2]);;
   display.init();
 
   display.flipScreenVertically();
@@ -4316,7 +4281,7 @@ void ScreenLoop() {
   //display.drawString(0, 0, LocStr);
 
   TimeRunningMs = millis();
-  LocStr += "- lp ";
+  LocStr += "-lp ";
   LocStr += LoopUs;
   LocStr += "us";
   LocStr += ", TRun ";
@@ -4336,7 +4301,6 @@ void ScreenLoop() {
   LocStr += "\n";
 
   display.drawString(0, 12, LocStr);
-  
   display.display();
 }
 #endif /* WITH_SCREEN */
@@ -5042,36 +5006,36 @@ void setup() {
 
   TimerSetup();
 
-#ifdef WITH_SWITCH
-  SwitchInit();
-#endif /* WITH_SWITCH */
+  #ifdef WITH_SWITCH
+    SwitchInit();
+  #endif /* WITH_SWITCH */
 
-#ifdef RESTART_PIN
-  RestartSwitchInit();
-#endif /* RESTART_PIN */
+  #ifdef RESTART_PIN
+    RestartSwitchInit();
+  #endif /* RESTART_PIN */
 
-#ifdef WITH_ADC
-  pinMode( WITH_ADC, INPUT);
-#endif /* WITH_ADC */
+  #ifdef WITH_ADC
+    pinMode( WITH_ADC, INPUT);
+  #endif /* WITH_ADC */
 
-#ifdef RESTART_B_PIN
-  RestartBSwitchInit();
-#endif /* RESTART_PIN */
+  #ifdef RESTART_B_PIN
+    RestartBSwitchInit();
+  #endif /* RESTART_PIN */
 
   Activity( ACT_READY);
   EpromDump();
 
-#ifdef WITH_IOTMUTUAL
-  IotMutualSetup();
-#endif /* WITH_IOTMUTUAL */
+  #ifdef WITH_IOTMUTUAL
+    IotMutualSetup();
+  #endif /* WITH_IOTMUTUAL */
 
-#ifdef WITH_OSC
-  OscInit();
-#endif /* WITH_OSC */
+  #ifdef WITH_OSC
+    OscInit();
+  #endif /* WITH_OSC */
 
-#ifdef WITH_SCREEN
-  ScreenSetup();
-#endif /* WITH_SCREEN */
+  #ifdef WITH_SCREEN
+    ScreenSetup();
+  #endif /* WITH_SCREEN */
 
   DbgLastActivityMillis = millis();
   LoopUs = DiffTime( LoopLastUs, micros()); // init
