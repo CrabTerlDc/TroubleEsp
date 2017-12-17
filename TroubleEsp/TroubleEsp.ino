@@ -226,7 +226,7 @@
   #define WITH_STEPPER {  25, 26} // GPIO 25 GPIO 26
   //#define WITH_TIMER
   #define WITH_ADC 12 // GPIO_12 ADC_15 TOUCH_5
-  #define WITH_WS2812 36 // TODO_HERE - blocking
+  //#define WITH_WS2812 36 // TODO_HERE - test
 #endif
 
 
@@ -1447,8 +1447,8 @@ int WifiCliConnected() {
     return false;
   } else {
     #if defined (ESP32)
-      return (WiFi.status() == WL_CONNECTED);
-      // return (wifiMulti.run() == WL_CONNECTED);
+      //return (WiFi.status() == WL_CONNECTED);
+      return (wifiMulti.run() == WL_CONNECTED);
     #elif defined( ESP8266)
       return (wifiMulti.run() == WL_CONNECTED);
     #else
@@ -1490,8 +1490,8 @@ int SthToConnect = 0;
     if (0 != CliSSID[0]) {
       #if defined (ESP32)
         // sniff not ready, lock a little  ... 
-        // wifiMulti.addAP( (char*)CliSSID, (char*)CliPWD);
-        WiFi.begin( (char*)CliSSID, (char*)CliPWD);
+        wifiMulti.addAP( (char*)CliSSID, (char*)CliPWD);
+        //WiFi.begin( (char*)CliSSID, (char*)CliPWD);
       #elif defined( ESP8266)
         // wifiMulti.APlistClean();
         wifiMulti.addAP( (char*)CliSSID, (char*)CliPWD);
