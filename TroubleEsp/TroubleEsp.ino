@@ -226,7 +226,8 @@
   #define WITH_STEPPER {  25, 26} // GPIO 25 GPIO 26
   //#define WITH_TIMER
   #define WITH_ADC 12 // GPIO_12 ADC_15 TOUCH_5
-  //#define WITH_WS2812 36 // TODO_HERE - test
+  #define WITH_WS2812 8 // TODO_HERE - test
+  // gpio 36 lots of gpio err on console 
 #endif
 
 
@@ -422,10 +423,12 @@ void TimeRunningDump( String& LocStr);
 #ifdef WITH_IOTMUTUAL
   #include <WiFiClient.h>
   #ifdef ESP32
-    //#include <ESPWebServer.h> thru wifi.h WiFiServer
+    // arduino-1.8.6/portable/sketchbook/libraries$ git clone https://github.com/bbx10/WebServer_tng.git WebServer
+    #include <WebServer.h>
     #include <ESPmDNS.h>
   #endif /* ESP32 */
   #ifdef ESP8266
+    // /Op/Arduino/arduino-1.8.6/portable/packages/esp8266/hardware/esp8266/2.3.0/libraries/ESP8266WebServer/src/ESP8266WebServer.cpp
     #include <ESP8266WebServer.h>
     #include <ESP8266mDNS.h>
   #endif /* ESP8266 */
@@ -564,7 +567,8 @@ uint8_t DfpPins[] = WITH_DFPLAYER;
 
 #ifdef WITH_IOTMUTUAL
   #ifdef ESP32
-    WiFiServer server(80);
+    //WiFiServer server(80);
+    WebServer server( 80);
   #endif
   #ifdef ESP8266
     ESP8266WebServer server(80);
@@ -3028,9 +3032,7 @@ void handleRoot() {
 </html>";
 
 
-  #ifndef ESP32 // TODO_HERE
-    server.send( 200, "text/html", MyStr );
-  #endif
+  server.send( 200, "text/html", MyStr );
 }
 
 void IotCommandResp() {
@@ -3051,9 +3053,7 @@ void IotCommandResp() {
   MyStr += "\
   </body>\
 </html>";
-  #ifndef ESP32 // TODO_HERE
-    server.send ( 200, "text/html", MyStr );
-  #endif
+  server.send ( 200, "text/html", MyStr );
 }
 
 void IotGlobalStatusHandle() {
@@ -3083,9 +3083,7 @@ void IotGlobalStatusHandle() {
   </body>\
 </html>";
   //dbgprintf( 2, "PosC0\n");  // TODO_LATER : maybe udp during send locks for 9 sec
-  #ifndef ESP32 // TODO_HERE
-    server.send ( 200, "text/html", MyStr );
-  #endif
+  server.send ( 200, "text/html", MyStr );
   //dbgprintf( 2, "PosD0\n");
 }
 
@@ -3093,28 +3091,18 @@ void handleNotFound() {
   // digitalWrite ( led, 1 );
   String message = "File Not Found\n\n";
   message += "URI: ";
-  #ifndef ESP32 // TODO_HERE
-    message += server.uri();
-  #endif
+  message += server.uri();
   message += "\nMethod: ";
-  #ifndef ESP32 // TODO_HERE
-    message += ( server.method() == HTTP_GET ) ? "GET" : "POST";
-  #endif
+  message += ( server.method() == HTTP_GET ) ? "GET" : "POST";
   message += "\nArguments: ";
-  #ifndef ESP32 // TODO_HERE
-    message += server.args();
-  #endif
+  message += server.args();
   message += "\n";
 
-  #ifndef ESP32 // TODO_HERE
   for ( uint8_t i = 0; i < server.args(); i++ ) {
     message += " " + server.argName ( i ) + ": " + server.arg ( i ) + "\n";
   }
-  #endif
 
-  #ifndef ESP32 // TODO_HERE
-    server.send ( 404, "text/plain", message );
-  #endif
+  server.send ( 404, "text/plain", message );
   //digitalWrite ( led, 0 );
 }
 
@@ -3123,7 +3111,6 @@ void IotCommand(void) {
   char Uri[200];
   int Pos;
 
-  #ifndef ESP32 // TODO_HERE
   if (server.args() > 0 ) {
     for ( uint8_t i = 0; i < server.args(); i++ ) {
       server.arg(i).toCharArray(Uri, 200);
@@ -3137,7 +3124,6 @@ void IotCommand(void) {
       }
     }
   }
-  #endif
   //- See more at: http://www.esp8266.com/viewtopic.php?f=8&t=4345#sthash.fEzVLQQQ.dpuf
 
   IotCommandResp();
@@ -3150,14 +3136,12 @@ void IotMutualSetup ( void ) {
     dbgprintf( 3,  "MDNS responder started" );
   }
 
-  #ifndef ESP32 // TODO_HERE
   server.on( "/", handleRoot);
   server.on( "/command.php", IotCommand);
   server.on( "/globalstatus", IotGlobalStatusHandle);
   server.onNotFound ( handleNotFound );
   server.begin();
   dbgprintf( 3, "HTTP server started\n" );
-  #endif
 }
 
 #endif /* WITH_IOTMUTUAL */
@@ -4915,9 +4899,7 @@ int Automation( void) {
     // TODO_LATER : sometimes lock below
     //dbgprintf( 2, "PosB\n");
     //  TimerStop();
-    #ifndef ESP32 // TODO_HERE
-      server.handleClient();
-    #endif
+    server.handleClient();
     //  TimerStart();
     //dbgprintf( 2, "PosC\n");
   #endif /* WITH_IOTMUTUAL */
