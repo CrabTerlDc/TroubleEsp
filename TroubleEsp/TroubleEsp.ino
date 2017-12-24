@@ -155,11 +155,11 @@
   //#define WITH_STEPPER_IN { 0, 4}
   //#define WITH_STOPPER
   #define WITH_SERVO  { 2} // rem : tried {12} alone, need {12, 2} to move TODO_LATER : wtf?
-#define WITH_ADC      A0
+  #define WITH_ADC      A0
 
-// #define WITH_NOKIA5110
-// #define WITH_NOKIA5110_ADAFRUIT
-// #define WITH_OLED
+  // #define WITH_NOKIA5110
+  // #define WITH_NOKIA5110_ADAFRUIT
+  // #define WITH_OLED
 
 #elif defined (MODULE_STEPPER) // ---------------
   #define WITH_WIFI
@@ -189,18 +189,18 @@
   #define WITH_WS2812  D3 // 0
   //#define WITH_SERVO  { D4} //2
 #elif defined( MODULE_TROUBLE) // ---------------
-#define WITH_WIFI
-#define WITH_IOTMUTUAL // web server
-#define WITH_OSC
-// #define WITH_LED_SHOW_WIFI
-#define ROLE_DEFAULT ROLE_PASSENGER) // we will produce more passengers than players
-// #define ROLE_DEFAULT ROLE_PLAYER; // we will produce more players than passengers
+  #define WITH_WIFI
+  #define WITH_IOTMUTUAL // web server
+  #define WITH_OSC
+  // #define WITH_LED_SHOW_WIFI
+  #define ROLE_DEFAULT ROLE_PASSENGER) // we will produce more passengers than players
+  // #define ROLE_DEFAULT ROLE_PLAYER; // we will produce more players than passengers
 
 
-#define WITH_WS2812    2
-#define WITH_DFPLAYER {12, 13} // { Rx, Tx}
-#define WITH_SWITCH   14
-//#define WITH_AUTODETECT
+  #define WITH_WS2812    2
+  #define WITH_DFPLAYER {12, 13} // { Rx, Tx}
+  #define WITH_SWITCH   14
+  //#define WITH_AUTODETECT
 #elif defined( MODULE_DEV) // ---------------
   #define WITH_WIFI
   #define WITH_WIFICLIENT // connect other network
@@ -241,13 +241,16 @@
 // 0..99, but for buttons in blind mode we will constraint node id
 #define MAX_STORY 20
 #define MAX_TRACK 20
-#define BEN_TAG "BEN_" // 4 chars expected
+
+#ifndef BEN_TAG
+  #define BEN_TAG "BEN_" // 4 chars expected
+#endif
 #ifndef BEN_PWD
   #define BEN_PWD "MyAdmin"
 #endif /* BEN_PWD */
 
 #ifndef ROLE_DEFAULT
-#define ROLE_DEFAULT ROLE_IOTS
+  #define ROLE_DEFAULT ROLE_IOTS
 #endif
 // -- Lib includes and const
 
@@ -341,6 +344,7 @@ typedef int32_t pr_int32_t[3];
   #else
     //TODO_LATER : check with std arduino and a wifi shield, wifi parts of this code probably derivate a lot to ESP spacific only...
     #include <WiFi.h>
+    #define MAX_TPW 82
   #endif /* ESP8266 */
 
   #ifdef WITH_OSC
@@ -416,9 +420,19 @@ void TimeRunningDump( String& LocStr);
 #ifdef WITH_SCREEN_SSD1306 
   uint8_t ScreenParams[] = WITH_SCREEN_SSD1306;
   SSD1306 display(ScreenParams[0],ScreenParams[1],ScreenParams[2]);
-  int32_t ScreenLastMs;
+  #define WITH_SCREEN
 #endif
 
+#ifdef WITH_SCREEN
+  int32_t ScreenLastMs; // do not disp every turn, it consume time
+  String DispStr;
+  uint8_t DispLine;
+  uint32_t ScreenDispMs = 0;
+  
+  void ScreenDisp( String StrShow);
+#else /* WITH_SCREEN */
+ #define ScreenDisp( StrShow)
+#endif /* WITH_SCREEN */
 
 #ifdef WITH_IOTMUTUAL
   #include <WiFiClient.h>
@@ -861,8 +875,10 @@ void Activity( int NewState);
 unsigned long DbgLastActivityMillis = 0;
 uint32_t TimeShowMs = 0;
 int State = 0;
-uint32_t LoopLastUs;
-uint32_t LoopUs;
+uint32_t LoopLastUs = 0;
+uint32_t LoopMaxUs = 0;
+uint32_t LoopUs = 0;
+uint32_t LoopMinUs = 0;
 
 // TODO_LATER : should be in default package...
 #define min( a, b) (a<b ? (a) : (b))
@@ -962,9 +978,9 @@ int32_t pr_int32_read (pr_int32_t& Id) {
 #define RoleSet( R) Epr3Set(2, R)
 
 #ifdef WITH_AUTODETECT
-// TODO_LATER :  Db will start to play without contact (0 no autostart)
-#define DetectLevGet() Epr3Get(3)
-#define DetectLevSet( Val) Epr3Set(3, Val)
+  // TODO_LATER :  Db will start to play without contact (0 no autostart)
+  #define DetectLevGet() Epr3Get(3)
+  #define DetectLevSet( Val) Epr3Set(3, Val)
 #endif /* WITH_AUTODETECT */
 
 #define MaxGet() Epr3Get(4)
@@ -985,51 +1001,45 @@ int32_t pr_int32_read (pr_int32_t& Id) {
 #define EPROM_POS_009 10
 
 #ifdef WITH_WIFI
-//#define WIFI_SRV_SSID_POS
-//#define EPROM_POS EPROM_POS + WIFI_IDLEN
-
-//#define WIFI_SRV_PWD_POS EPROM_POS
-//#define EPROM_POS EPROM_POS + WIFI_PWDLEN
-
-#define EPROM_POS_010 EPROM_POS_009+WIFI_IDLEN+WIFI_PWDLEN
+  #define EPROM_POS_010 EPROM_POS_009+WIFI_IDLEN+WIFI_PWDLEN
 #else
-#define EPROM_POS_010 EPROM_POS_009
+  #define EPROM_POS_010 EPROM_POS_009
 #endif /* WITH_WIFI */
 
 #ifdef WITH_WIFICLIENT
-#define WiCliSSIDGet() Epr3StrGet( EPROM_POS_010, CliSSID, WIFI_IDLEN)
-#define WiCliSSIDSet() Epr3StrSet( EPROM_POS_010, CliSSID, WIFI_IDLEN)
-#define EPROM_POS_010a EPROM_POS_010+WIFI_IDLEN
+  #define WiCliSSIDGet() Epr3StrGet( EPROM_POS_010, CliSSID, WIFI_IDLEN)
+  #define WiCliSSIDSet() Epr3StrSet( EPROM_POS_010, CliSSID, WIFI_IDLEN)
+  #define EPROM_POS_010a EPROM_POS_010+WIFI_IDLEN
 
-#define WiCliPwdGet() Epr3StrGet( EPROM_POS_010a, CliPWD, WIFI_PWDLEN)
-#define WiCliPwdSet() Epr3StrSet( EPROM_POS_010a, CliPWD, WIFI_PWDLEN)
+  #define WiCliPwdGet() Epr3StrGet( EPROM_POS_010a, CliPWD, WIFI_PWDLEN)
+  #define WiCliPwdSet() Epr3StrSet( EPROM_POS_010a, CliPWD, WIFI_PWDLEN)
 
-#define EPROM_POS_011 EPROM_POS_010+WIFI_IDLEN+WIFI_PWDLEN
+  #define EPROM_POS_011 EPROM_POS_010+WIFI_IDLEN+WIFI_PWDLEN
 #else
-#define EPROM_POS_011 EPROM_POS_010
+  #define EPROM_POS_011 EPROM_POS_010
 #endif /* WIFI_CLIENT */
 
 #ifdef WITH_OSC
-#define OscAddrGet() Epr3StrGet( EPROM_POS_011                , OscAddr, OSC_CMD_LEN)
-#define OscAddrSet() Epr3StrSet( EPROM_POS_011                , OscAddr, OSC_CMD_LEN)
+  #define OscAddrGet() Epr3StrGet( EPROM_POS_011                , OscAddr, OSC_CMD_LEN)
+  #define OscAddrSet() Epr3StrSet( EPROM_POS_011                , OscAddr, OSC_CMD_LEN)
 
-// TODO_LATER : spare memory if need some here on not defined functionnalities
-#ifdef WITH_SWITCH
-#define OscCmd1Get() Epr3StrGet( EPROM_POS_011+OSC_CMD_LEN  , OscCmd1, OSC_CMD_LEN)
-#define OscCmd1Set() Epr3StrSet( EPROM_POS_011+OSC_CMD_LEN  , OscCmd1, OSC_CMD_LEN)
+  // TODO_LATER : spare memory if need some here on not defined functionnalities
+  #ifdef WITH_SWITCH
+    #define OscCmd1Get() Epr3StrGet( EPROM_POS_011+OSC_CMD_LEN  , OscCmd1, OSC_CMD_LEN)
+    #define OscCmd1Set() Epr3StrSet( EPROM_POS_011+OSC_CMD_LEN  , OscCmd1, OSC_CMD_LEN)
 
-#define OscCmd2Get() Epr3StrGet( EPROM_POS_011+2*OSC_CMD_LEN, OscCmd2, OSC_CMD_LEN)
-#define OscCmd2Set() Epr3StrSet( EPROM_POS_011+2*OSC_CMD_LEN, OscCmd2, OSC_CMD_LEN)
-#endif /* WITH_SWITCH */
+    #define OscCmd2Get() Epr3StrGet( EPROM_POS_011+2*OSC_CMD_LEN, OscCmd2, OSC_CMD_LEN)
+    #define OscCmd2Set() Epr3StrSet( EPROM_POS_011+2*OSC_CMD_LEN, OscCmd2, OSC_CMD_LEN)
+  #endif /* WITH_SWITCH */
 
-#ifdef WITH_ADC
-#define OscCmd3Get() Epr3StrGet( EPROM_POS_011+3*OSC_CMD_LEN, OscCmd3, OSC_CMD_LEN)
-#define OscCmd3Set() Epr3StrSet( EPROM_POS_011+3*OSC_CMD_LEN, OscCmd3, OSC_CMD_LEN)
-#endif /* WITH_ADC */
+  #ifdef WITH_ADC
+    #define OscCmd3Get() Epr3StrGet( EPROM_POS_011+3*OSC_CMD_LEN, OscCmd3, OSC_CMD_LEN)
+    #define OscCmd3Set() Epr3StrSet( EPROM_POS_011+3*OSC_CMD_LEN, OscCmd3, OSC_CMD_LEN)
+  #endif /* WITH_ADC */
 
-#define EPROM_POS_012 EPROM_POS_011+4*OSC_CMD_LEN
+  #define EPROM_POS_012 EPROM_POS_011+4*OSC_CMD_LEN
 #else
-#define EPROM_POS_012 EPROM_POS_011
+  #define EPROM_POS_012 EPROM_POS_011
 #endif /* WITH_OSC */
 
 #define EprMotor0ModeGet() Epr3Get(EPROM_POS_012)
@@ -1123,11 +1133,11 @@ void EpromSanity() {
     NodeSet( 1);
   }
 
-#ifdef WITH_AUTODETECT
-  if (DetectLevGet() > 99) {
-    DetectLevSet( 0);
-  }
-#endif /* WITH_AUTODETECT */
+  #ifdef WITH_AUTODETECT
+    if (DetectLevGet() > 99) {
+      DetectLevSet( 0);
+    }
+  #endif /* WITH_AUTODETECT */
 
   // debug level, see Verbose variable for definition
   if ((VerboseGet() > 9) && (VerboseGet() > Verbose)) {
@@ -1137,53 +1147,53 @@ void EpromSanity() {
 
   g_iTmp = RssiCorrectionGet();
 
-#ifdef WITH_WIFI
-#ifdef ESP8266
-  // 82 by Pwr, 64*2 by letters
-  if ((g_iTmp < 128 - (MAX_TPW / 2) - MAX_LTR) || (g_iTmp > 128 + (MAX_TPW / 2) + MAX_LTR)) {
-    RssiCorrectionSet( 128 - (MAX_TPW / 2));
-  }
-#else /* ESP8266 */
-  if ((g_iTmp < 128 - MAX_LTR) || (g_iTmp > 128 + MAX_LTR)) {
-    RssiCorrectionSet( 128);
-  }
-#endif /* ESP8266 */
+  #ifdef WITH_WIFI
+    #ifdef ESP8266
+      // 82 by Pwr, 64*2 by letters
+      if ((g_iTmp < 128 - (MAX_TPW / 2) - MAX_LTR) || (g_iTmp > 128 + (MAX_TPW / 2) + MAX_LTR)) {
+        RssiCorrectionSet( 128 - (MAX_TPW / 2));
+      }
+    #else /* ESP8266 */
+      if ((g_iTmp < 128 - MAX_LTR) || (g_iTmp > 128 + MAX_LTR)) {
+        RssiCorrectionSet( 128);
+      }
+    #endif /* ESP8266 */
 
-  if ((0 > RssiMinimalGet()) || (RssiMinimalGet() > (-RSSI_MIN))) {
-    //RssiMinimalSet( -RSSI_MIN);
-    RssiMinimalSet( 100);
-  }
-#endif /* WITH_WIFI */
+    if ((0 > RssiMinimalGet()) || (RssiMinimalGet() > (-RSSI_MIN))) {
+      //RssiMinimalSet( -RSSI_MIN);
+      RssiMinimalSet( 100);
+    }
+  #endif /* WITH_WIFI */
 
 
   if (EprReqGet() != (EPROM_REQ_SIZE) % 0x100) {
-#ifdef WITH_WIFICLIENT
-    CliSSID[0] = 0;
-    WiCliSSIDSet();
-    CliPWD[0] = 0;
-    WiCliPwdSet();
-#endif /* WITH_WIFICLIENT */
+    #ifdef WITH_WIFICLIENT
+      CliSSID[0] = 0;
+      WiCliSSIDSet();
+      CliPWD[0] = 0;
+      WiCliPwdSet();
+    #endif /* WITH_WIFICLIENT */
 
-#ifdef WITH_OSC
-    strcpy( OscAddr, OSC_DEFAULT_ADDR);
-    OscAddrSet();
-#ifdef WITH_SWITCH
-    strcpy( OscCmd1, OSC_DEFAULT_CMD1);
-    OscCmd1Set();
-    strcpy( OscCmd2, OSC_DEFAULT_CMD2);
-    OscCmd2Set();
-#endif /* WITH_SWITCH */
-#ifdef WITH_ADC
-    strcpy( OscCmd3, OSC_DEFAULT_CMD3);
-    OscCmd3Set();
-#endif /* WITH_ADC */
-#endif /* WITH_OSC */
+    #ifdef WITH_OSC
+      strcpy( OscAddr, OSC_DEFAULT_ADDR);
+      OscAddrSet();
+      #ifdef WITH_SWITCH
+        strcpy( OscCmd1, OSC_DEFAULT_CMD1);
+        OscCmd1Set();
+        strcpy( OscCmd2, OSC_DEFAULT_CMD2);
+        OscCmd2Set();
+      #endif /* WITH_SWITCH */
+      #ifdef WITH_ADC
+        strcpy( OscCmd3, OSC_DEFAULT_CMD3);
+        OscCmd3Set();
+      #endif /* WITH_ADC */
+    #endif /* WITH_OSC */
 
-#ifdef WITH_MOTOR
-    EprMotor0ModeSet( MOTOR_UNDEF);
-    EprMotor1ModeSet( MOTOR_UNDEF);
-    EprMotor2ModeSet( MOTOR_UNDEF);
-#endif /* WITH_MOTOR */
+    #ifdef WITH_MOTOR
+      EprMotor0ModeSet( MOTOR_UNDEF);
+      EprMotor1ModeSet( MOTOR_UNDEF);
+      EprMotor2ModeSet( MOTOR_UNDEF);
+    #endif /* WITH_MOTOR */
 
     WifiAddsSet( 1);
 
@@ -1200,21 +1210,21 @@ void EpromSanity() {
 
   }
 
-#ifdef WITH_WIFICLIENT
-  WiCliSSIDGet();
-  WiCliPwdGet();
-#endif /* WITH_WIFICLIENT */
+  #ifdef WITH_WIFICLIENT
+    WiCliSSIDGet();
+    WiCliPwdGet();
+  #endif /* WITH_WIFICLIENT */
 
-#ifdef WITH_OSC
-  OscAddrGet();
-#ifdef WITH_SWITCH
-  OscCmd1Get();
-  OscCmd2Get();
-#endif /* WITH_SWITCH */
-#ifdef WITH_ADC
-  OscCmd3Get();
-#endif /* WITH_ADC */
-#endif /* WITH_OSC */
+  #ifdef WITH_OSC
+    OscAddrGet();
+    #ifdef WITH_SWITCH
+      OscCmd1Get();
+      OscCmd2Get();
+    #endif /* WITH_SWITCH */
+    #ifdef WITH_ADC
+      OscCmd3Get();
+    #endif /* WITH_ADC */
+  #endif /* WITH_OSC */
 }
 
 // show eprom content on debug line
@@ -1225,15 +1235,15 @@ void EpromDumpBld( String& LocStr) {
 
   LocStr += "\n";
   LocStr +=  BEN_TAG "Soft (c)ben\n";
-#if defined( MODULE_LAAPIN)
-  LocStr +=  ", HDW:Lapin";
-#elif defined( MODULE_STEPPER)
-  LocStr +=  ", HDW:Stepper";
-#elif defined( MODULE_MWS)
-  LocStr +=  ", HDW:MWS";
-#elif defined( MODULE_TROUBLE)
-  LocStr +=  ", HDW:Trouble";
-#endif
+  #if defined( MODULE_LAAPIN)
+    LocStr +=  ", HDW:Lapin";
+  #elif defined( MODULE_STEPPER)
+    LocStr +=  ", HDW:Stepper";
+  #elif defined( MODULE_MWS)
+    LocStr +=  ", HDW:MWS";
+  #elif defined( MODULE_TROUBLE)
+    LocStr +=  ", HDW:Trouble";
+  #endif
 
   LocStr +=  ", rev. " HARDWARE_NAME;
   LocStr +=  " , nl&cr endline recommended\n";
@@ -1241,12 +1251,12 @@ void EpromDumpBld( String& LocStr) {
 
   LocStr  +=  "*" + CSTRI( NodeGet()) + "N :  xxN Node\n";
 
-#ifdef WITH_DFPLAYER
-  LocStr +=  "*" + CSTRI( GetVolume()) + "V :  xxV Volume\n";
-  if (ROLE_MULTI ==  RoleGet()) {
-    LocStr +=  "*" + String( (int)MaxGet()) + "M :  xxM Max stories\n";
-  }
-#endif /* WITH_DFPLAYER */
+  #ifdef WITH_DFPLAYER
+    LocStr +=  "*" + CSTRI( GetVolume()) + "V :  xxV Volume\n";
+    if (ROLE_MULTI ==  RoleGet()) {
+      LocStr +=  "*" + String( (int)MaxGet()) + "M :  xxM Max stories\n";
+    }
+  #endif /* WITH_DFPLAYER */
 
   LocStr +=  "*" + String( (int)RoleGet()) + "R :  xR Role ";
   switch ( RoleGet()) {
@@ -1263,12 +1273,12 @@ void EpromDumpBld( String& LocStr) {
   }
   LocStr +=  "\n";
   LocStr +=  "     ( ";
-#ifdef WITH_DFPLAYER
-  LocStr +=    " " + CSTRI(  ROLE_PASSENGER)  + "  Passenger";
-  LocStr +=  " , " + String( (int)ROLE_PLAYER) + "  Player";
-  LocStr +=  " , " + String( (int)ROLE_SOLO)  + "  Solo";
-  LocStr +=  " , " + String( (int)ROLE_MULTI) + "  Multi";
-#endif /* WITH_DFPLAYER */
+  #ifdef WITH_DFPLAYER
+    LocStr +=    " " + CSTRI(  ROLE_PASSENGER)  + "  Passenger";
+    LocStr +=  " , " + String( (int)ROLE_PLAYER) + "  Player";
+    LocStr +=  " , " + String( (int)ROLE_SOLO)  + "  Solo";
+    LocStr +=  " , " + String( (int)ROLE_MULTI) + "  Multi";
+  #endif /* WITH_DFPLAYER */
   LocStr +=  " , " + String( (int)ROLE_TEST)  + "  Test";
   LocStr +=  " , " + String( (int)ROLE_IOTM)  + "  IotM";
   LocStr +=  " , " + String( (int)ROLE_IOTS)  + "  IotS";
@@ -1463,7 +1473,7 @@ int WifiCliConnected() {
 
 void WifiCliLoop() {
 int SthToConnect = 0;
-#ifdef WITH_WIFI
+  #ifdef WITH_WIFI
   if ((WifiState_JUSTCONNECTED == WifiCliConnectState) && WifiCliConnected()) {
     // detect lan conflict, not perfect but it do the tricks
     uint32_t IpNumSrv = 0;
@@ -1473,12 +1483,12 @@ int SthToConnect = 0;
     IpNumCli = WiFi.localIP();
     if ( (IpNumSrv & 0xFFFFFF) == (IpNumCli & 0xFFFFFF) ) {
       // try to act clean
-#ifdef WITH_OSC
-      if (1 == OscWifiSrvState) {
-        // TODO_LATER : soupcons que ca cupe debug OscUdpSrv.stop();
-        OscWifiSrvState = 0;
-      }
-#endif /* WITH_OSC */
+      #ifdef WITH_OSC
+        if (1 == OscWifiSrvState) {
+          // TODO_LATER : soupcons que ca coupe debug OscUdpSrv.stop();
+          OscWifiSrvState = 0;
+        }
+      #endif /* WITH_OSC */
       dbgprintf( 2, " Warn - solve lan conflict", IpNumSrv);
       dbgprintf( 2, " Srv 0x%x ", IpNumSrv);
       dbgprintf( 2, " Cli 0x%x\n", IpNumCli);
@@ -1668,7 +1678,7 @@ void StateDumpBld_2( String& LocStr) {
 #endif /* WITH_GRAYCODE_IN */
 
 #ifdef WITH_ADC
-  LocStr  +=  "-Adc:" + CSTRI( AdcVal) + ", pin:" + CSTRI(A0);
+  LocStr  +=  "-Adc:" + CSTRI( AdcVal) + ", pin:" + CSTRI( WITH_ADC);
   #ifndef WITH_WIFI
     LocStr  +=  " Raw:" + CSTRI( analogRead(WITH_ADC)); // suspect ADC and http weirdness
   #endif /* WITH_WIFI */
@@ -1678,9 +1688,15 @@ void StateDumpBld_2( String& LocStr) {
 #ifdef STOPPER_MIN_PIN
   LocStr  +=  "-StopMin :" + CSTRI( digitalRead( STOPPER_MIN_PIN)) + ", pin:" + CSTRI(STOPPER_MIN_PIN) +"\n";
 #endif /* STOPPER_MIN_PIN */
-#ifdef STOPPER_MAX_PIN
-  LocStr  +=  "-StopMax :" + CSTRI( digitalRead( STOPPER_MAX_PIN)) + ", pin:" + CSTRI(STOPPER_MAX_PIN) +"\n";
-#endif /* STOPPER_MAX_PIN */
+  #ifdef STOPPER_MAX_PIN
+    LocStr  +=  "-StopMax :" + CSTRI( digitalRead( STOPPER_MAX_PIN)) + ", pin:" + CSTRI(STOPPER_MAX_PIN) +"\n";
+  #endif /* STOPPER_MAX_PIN */
+
+  #if defined( WITH_SCREEN_SSD1306)
+      LocStr  +=  "-Screen SSD1306 :" + CSTRI( ScreenParams[0]) + ", Pin :" + CSTRI( ScreenParams[1]) + " " + CSTRI( ScreenParams[2]) + "\n";
+  #elif defined(WITH_SCREEN)
+      LocStr  +=  "-Screen \n";
+  #endif
 
   TimeRunningDump( LocStr);
   
@@ -2325,6 +2341,7 @@ int OscMsgExec( char* Command) {
 
   if ('_' == Command[0]) {
 
+    ScreenDisp( "OSC:"+ String(Command));
     Pos = 1;
     while (0 != Command[Pos]) {
       CmdLineParse( Command[Pos]);
@@ -3116,6 +3133,7 @@ void IotCommand(void) {
       server.arg(i).toCharArray(Uri, 200);
       if (server.argName(i) == "Command") {
         dbgprintf( 3, "Internet injects %s\r\n", Uri);
+        ScreenDisp( "HTTP:"+server.arg(i));
         Pos = 0;
         while (0 != Uri[Pos]) {
           CmdLineParse( Uri[Pos]);
@@ -3702,14 +3720,12 @@ void  WifiDocState( String& LocStr) {
 int WifiInit( void) {
   int tpw;
   int iTmp;
-  int n;
+  int NbNet;
 
   int NodeNum = NodeGet();
 
   strcpy( SrvPWD, BEN_PWD);
   tpw = RssiCorrectionGet();
-#ifdef ESP8266
-  // TODO_HERE : ESP32
   if ((tpw >= 128 - MAX_TPW / 2) && (tpw <= 128 + MAX_TPW / 2)) {
     iTmp = map(RssiCorrectionGet(), 128 - MAX_TPW / 2, 128 + MAX_TPW / 2, 0, 82);
     tpw = 128;
@@ -3720,14 +3736,16 @@ int WifiInit( void) {
     iTmp = 0;
     tpw += MAX_TPW / 2 + 1;
   }
+
+#ifdef ESP8266
+  // TODO_HERE : ESP32
   system_phy_set_max_tpw( iTmp); // uint8 max_tpw 0..82
   dbgprintf( 3, "tpw set %i pwr", iTmp);
   dbgprintf( 3, ", %i by pwr\r\n", iTmp - MAX_TPW / 2);
-  #ifdef WITH_WIFI
-    n = WiFi.scanNetworks( true);
-    dbgprintf( 2, "WifiInit Net1 %i\r\n", n);
-  #endif
 #endif /* ESP8266 */
+
+  NbNet = WiFi.scanNetworks( true);
+  dbgprintf( 2, "WifiInit Net1 %i\r\n", NbNet);
 
   RssiCls();
 
@@ -4255,6 +4273,7 @@ void ScreenSetup() {
 void ScreenLoop() {
   String LocStr;
   uint32_t TimeRunningMs;
+  int LineToPAss;
 
   if ( DiffTime(ScreenLastMs, millis())< 232) {
     return;
@@ -4267,6 +4286,15 @@ void ScreenLoop() {
   //TimeRunningDump( LocStr);
   //display.drawString(0, 0, LocStr);
 
+  if (0 != DispStr.compareTo("")) {
+    DispLine = 0;
+    LocStr += DispStr;
+    LocStr += "\n";
+    if(DiffTime(ScreenDispMs, ScreenLastMs) > 4000){
+      DispStr = "";
+      ScreenDispMs = ScreenLastMs;
+    }
+  }
   TimeRunningMs = millis();
   LocStr += "-lp ";
   LocStr += LoopUs;
@@ -4287,9 +4315,30 @@ void ScreenLoop() {
   LocStr += CSTRIn( 3, NodeGet());
   LocStr += "\n";
 
+  if (0 == DispStr.compareTo("")) {
+    if(DiffTime(ScreenDispMs, ScreenLastMs) > 1000){
+      DispLine++;
+      ScreenDispMs = ScreenLastMs;
+      if (DispLine > 4) {
+        DispLine = 0;
+      }
+    }
+
+    for (LineToPAss= 0; LineToPAss< DispLine; LineToPAss++) {
+      LocStr = LocStr.substring( LocStr.indexOf( '\n') +1);
+    }
+
+    LocStr = LocStr.substring( LocStr.indexOf( '\n') +1);
+  }
+  
   display.drawString(0, 12, LocStr);
   display.display();
 }
+
+  void ScreenDisp( String StrShow) {
+    DispStr = StrShow;
+    ScreenDispMs = millis();
+  }
 #endif /* WITH_SCREEN */
 
 void TimeRunningDump( String& LocStr) {
@@ -4312,8 +4361,13 @@ void TimeRunningDump( String& LocStr) {
   iTmp = (TimeRunningMs/(uint32_t)1000)%60;  // secondes
   LocStr += CSTRIn( 2, iTmp);
   LocStr += "s, loop ";
+  LocStr += LoopMaxUs;
+  LocStr += "us ";
   LocStr += LoopUs;
+  LocStr += "us ";
+  LocStr += LoopMinUs;
   LocStr += "us\n";
+  LocStr += "\n";
 }
 
 // Description : just show alive (if NewState is 0) or set a new state
@@ -4804,6 +4858,7 @@ int Automation( void) {
   int ActivityMs = 100000; // 60000 is 60 sec to see in a debug window, each message blinks blue led and cost energy
   int iTmp;
   uint32_t CurrMicros;
+  uint32_t DeltaMicros;
 
   if ( DiffTime( millis(), TimeShowMs) > ActivityMs) { // display activity
     TimeShowMs = millis();
@@ -4863,7 +4918,18 @@ int Automation( void) {
 
 
   CurrMicros = micros();
-  LoopUs = (LoopUs + 5 * DiffTime( LoopLastUs, CurrMicros)) / 6;
+  DeltaMicros = DiffTime( LoopLastUs, CurrMicros);
+  if (DeltaMicros > LoopMaxUs) {
+    LoopMaxUs = DeltaMicros;
+  } else {
+    LoopMaxUs = (LoopMaxUs * 300 + DeltaMicros) / 301;
+  }
+  LoopUs = (LoopUs * 5 + DeltaMicros) / 6;
+  if (DeltaMicros < LoopMinUs) {
+    LoopMinUs = DeltaMicros;
+  } else {
+    LoopMinUs = (LoopMinUs * 300 + DeltaMicros) / 301;
+  }
   LoopLastUs = CurrMicros;
 
   #ifndef ESP32
@@ -4984,7 +5050,7 @@ void setup() {
 
   #ifdef WITH_ADC
     // init
-    AdcVal = map(analogRead(WITH_ADC), 0, 1024, 0, 9999);
+    AdcVal = map( analogRead( WITH_ADC), 0, 1024, 0, 9999);
     AdcProcess( 0);
   #endif /* WITH_ADC */
 
