@@ -19,9 +19,10 @@
     220786/34660 on 20160204
 
   TODO_LIST
-  - DC Dir+Pwm (MD50) or LEft+Right (or stepper?) selectable
+  - DC Dir+Pwm (MD50) or Left+Right (or stepper?) selectable
   - DC & step drive per speed,
   - DC&Step, stoppers, homing, autotune, followers
+  - Gcode thru OSC, https://www.marginallyclever.com/2013/08/how-to-build-an-2-axis-arduino-cnc-gcode-interpreter/
   - RS485 on phantom power
   - standard arduino w/wo ethernet shield w/wo rs485
   - off led after reboot, 00 as statug orange at boot, green on wifi connected
@@ -117,22 +118,24 @@
   example pastille 070V 00R 87P 100m
 */
 
-#define HARDWARE_NAME "CRAB_20171204"
+#define HARDWARE_NAME "CRAB_20171228"
 
 // a way to not have my house AP-Pwd in the build
 // if none just comment the include or create an Mines.h with ESP8266_MULTIPERSO full of wifiMulti.addAP
 #include "Mines.h" 
 
-// global module kind
-//#define MODULE_LAAPIN
-//#define MODULE_STEPPER
-//#define MODULE_MWS // drive NXT motor
-//#define MODULE_TROUBLE
-#ifdef ESP32
-  #define MODULE_DEV32
-#else
-  #define MODULE_DEV
-#endif
+#ifndef WITH_MODULE
+  // global module kind
+  //#define MODULE_LAAPIN
+  //#define MODULE_STEPPER
+  //#define MODULE_MWS // drive NXT motor
+  //#define MODULE_TROUBLE
+  #ifdef ESP32
+    #define MODULE_DEV32
+  #else
+    #define MODULE_DEV
+  #endif
+#endif /* WITH_MODULE */
 
 // constants
 #define ROLE_PASSENGER 1 // annonce son Id wifi
@@ -211,8 +214,6 @@
   #define WITH_ADC      A0
   //#define WITH_STEPPER_IN { 12, 13} // D6 D7
   #define WITH_STEPPER {  D2, D3, D7, D6} // DIR1 PULS1
-  //#define WITH_WS2812    D4
-  //#define WITH_RELAY D5
 
   #define WITH_STOPPER { D5, D4} // min max
 
@@ -261,7 +262,7 @@
 #define NODEMCU_D1  5
 #define NODEMCU_D2  4
 #define NODEMCU_D3  0 // can be out, beware as input for prog, (analog 0 in is A0?)
-#define NODEMCU_D4  2 // float 3.3v +-0.2 during prog +  // TODO_LATER see 0-3.3v frames servo dislike
+#define NODEMCU_D4  2 // float 3.3v +-0.2 during prog + see 0-3.3v frames servo dislike + bad boots
 #define NODEMCU_D5 14
 #define NODEMCU_D6 12
 #define NODEMCU_D7 13 // rem: blink on prog
@@ -1769,11 +1770,9 @@ int PixelInit( void) {
   MyPinmode( WITH_WS2812, OUTPUT);
   digitalWrite( WITH_WS2812, LOW);
   pixels.begin();
-  for (i = 1; i< PIX_NB; i++) {
-    // PixelSet99( 99, 99, 99, i);
-    PixelSet99( 0, 0, 1, i);
+  for (i = 0; i< PIX_NB; i++) {
+    PixelSet99( 0, 0, 0, i);
   }
-  PixelSet99( 1, 1, 1, 0);
   pixels.show();
   return ( 0);
 }
@@ -1784,78 +1783,78 @@ int PixelInit( void) {
 #define RSMAX -7
 
 #ifdef WITH_LED_SHOW_WIFI
-int PixelShow( int WithStatus) {
-  int i = 0;
-  for (i = 0; i < (1 + PLAYERS_NB); i++)
-  {
-    int R = 0;
-    int G = 0;
-    int B = 0;
+  int PixelShow( int WithStatus) {
+    int i = 0;
+    for (i = 0; i < (1 + PLAYERS_NB); i++)
+    {
+      int R = 0;
+      int G = 0;
+      int B = 0;
 
-    if (0 == i) { // status
-      switch ( PixState) {
-        case ACT_DONTSHOW :
-          R =  0; G =  0; B =   0; break; // Blue
-        case ACT_ININIT:
-          R = 128; G = 128; B =   0; break; // orange
-        case ACT_PLAY :
-          R =  0; G = 255; B =   0; break; // Green
-        case ACT_READY :
-          R = 255; G = 255; B = 255; break; // White
-        default :
-          R =  0; G =  0; B = 255; break; // Blue
-      }
-      if (3 != WithStatus) {
-        PixView = WithStatus;
-      }
-      if (0 == PixView) {
-        R =  0; G =  0; B =   0;
-      }
-      RssiTmp = RSMIN + 5;
-    } else {
-      switch (PlayersId[i - 1]) {
-        case 0 : R =  0; G =  0; B =   0; break;
-        case 1 : R = 255; G =  0; B =   0; break; // Red
-        case 2 : R =  0; G = 255; B =   0; break; // Green
-        case 3 : R =  0; G =  0; B = 255; break; // Blue
+      if (0 == i) { // status
+        switch ( PixState) {
+          case ACT_DONTSHOW :
+            R =  0; G =  0; B =   0; break; // Blue
+          case ACT_ININIT:
+            R = 128; G = 128; B =   0; break; // orange
+          case ACT_PLAY :
+            R =  0; G = 255; B =   0; break; // Green
+          case ACT_READY :
+            R = 255; G = 255; B = 255; break; // White
+          default :
+            R =  0; G =  0; B = 255; break; // Blue
+        }
+        if (3 != WithStatus) {
+          PixView = WithStatus;
+        }
+        if (0 == PixView) {
+          R =  0; G =  0; B =   0;
+        }
+        RssiTmp = RSMIN + 5;
+      } else {
+        switch (PlayersId[i - 1]) {
+          case 0 : R =  0; G =  0; B =   0; break;
+          case 1 : R = 255; G =  0; B =   0; break; // Red
+          case 2 : R =  0; G = 255; B =   0; break; // Green
+          case 3 : R =  0; G =  0; B = 255; break; // Blue
 
-        case 4 : R = 128; G = 128; B =   0; break; // orange
-        case 5 : R = 128; G =  0; B = 128; break;
-        case 6 : R =  0; G = 128; B = 128; break;
+          case 4 : R = 128; G = 128; B =   0; break; // orange
+          case 5 : R = 128; G =  0; B = 128; break;
+          case 6 : R =  0; G = 128; B = 128; break;
 
-        case  7 : R = 170; G =  85; B =  0; break;
-        case  8 : R = 170; G =   0; B = 85; break;
-        case  9 : R = 85; G = 170; B = 0; break;
-        case 10 : R =  0; G = 170; B = 85; break;
-        case 11 : R = 85; G =  0; B = 170; break;
-        case 12 : R =  0; G = 85; B = 170; break;
+          case  7 : R = 170; G =  85; B =  0; break;
+          case  8 : R = 170; G =   0; B = 85; break;
+          case  9 : R = 85; G = 170; B = 0; break;
+          case 10 : R =  0; G = 170; B = 85; break;
+          case 11 : R = 85; G =  0; B = 170; break;
+          case 12 : R =  0; G = 85; B = 170; break;
 
-        default : R = 255; G = 255; B = 255; break; // White
+          default : R = 255; G = 255; B = 255; break; // White
+        }
+        RssiTmp = constrain( PlayersRssi[i - 1], RSMIN + 1, RSMAX);
+        //dbgprintf( 3, "Id %i\r\n", PlayersId[i]);
       }
-      RssiTmp = constrain( PlayersRssi[i - 1], RSMIN + 1, RSMAX);
-      //dbgprintf( 3, "Id %i\r\n", PlayersId[i]);
+      R = map( RssiTmp, RSMIN, RSMAX, 0, R);
+      G = map( RssiTmp, RSMIN, RSMAX, 0, G);
+      B = map( RssiTmp, RSMIN, RSMAX, 0, B);
+
+      if ((0 != RssiMinimalGet()) && (PlayersRssi[i - 1] < (-RssiMinimalGet()))) {
+        R = G = B = 0;
+      }
+      //dbgprintf( 2, "PixShow in %i", i);
+      //dbgprintf( 2, " R%i", R);
+      //dbgprintf( 2, " G%i", G);
+      //dbgprintf( 2, " B%i\r\n", B);
+
+      pixels.setPixelColor( i, pixels.Color( R, G, B));
     }
-    R = map( RssiTmp, RSMIN, RSMAX, 0, R);
-    G = map( RssiTmp, RSMIN, RSMAX, 0, G);
-    B = map( RssiTmp, RSMIN, RSMAX, 0, B);
+    pixels.show();
+    //dbgprintf( 2, "PixShow val1 %i\r\n", pixels.getPixelColor(1));
+    //dbgprintf( 2, "PixShow end %i\r\n", i);
 
-    if ((0 != RssiMinimalGet()) && (PlayersRssi[i - 1] < (-RssiMinimalGet()))) {
-      R = G = B = 0;
-    }
-    //dbgprintf( 2, "PixShow in %i", i);
-    //dbgprintf( 2, " R%i", R);
-    //dbgprintf( 2, " G%i", G);
-    //dbgprintf( 2, " B%i\r\n", B);
-
-    pixels.setPixelColor( i, pixels.Color( R, G, B));
+    return ( 0);
   }
-  pixels.show();
-  //dbgprintf( 2, "PixShow val1 %i\r\n", pixels.getPixelColor(1));
-  //dbgprintf( 2, "PixShow end %i\r\n", i);
-
-  return ( 0);
-}
-#endif /* WITH_LED_SHOW_WIFI */
+  #endif /* WITH_LED_SHOW_WIFI */
 
 void PixelShow99( uint8_t R99, uint8_t G99, uint8_t B99, uint8_t Pos) {
   PixelSet99( R99, G99, B99, Pos);
@@ -4381,36 +4380,19 @@ void Activity( int NewState) {
     State = NewState;
   }
 
-#ifdef TO_RIP
-  if (ACTIVITY_LED > 0) {
-    digitalWrite(ACTIVITY_LED, LOW);   // Turn the LED on (Note that LOW is the voltage level
-    // but actually the LED is on; this is because
-    // it is acive low on the ESP-01)
-    delay(400);                      // Wait for a second
-    digitalWrite(BUILTIN_LED, HIGH);  // Turn the LED off by making the voltage HIGH
-    delay(100);                      // Wait for two seconds (to demonstrate the active low LED)
-  }
-#endif /* TO_RIP */
-
-#ifdef WITH_LED_SHOW_WIFI
-  if (ACT_READY == State) {
-    PixelStatus( State);
-#ifdef WITH_LED_SHOW_WIFI
-    PixelShow( 1);
-#endif /* WITH_LED_SHOW_WIFI */
-    delay(10);
-#ifdef WITH_LED_SHOW_WIFI
-    PixelShow( 0); // spare power
-#endif /* WITH_LED_SHOW_WIFI */
-  } else {
-    if (0 != NewState) {
+  #ifdef WITH_LED_SHOW_WIFI
+    if (ACT_READY == State) {
       PixelStatus( State);
-#ifdef WITH_LED_SHOW_WIFI
       PixelShow( 1);
-#endif /* WITH_LED_SHOW_WIFI */
+      delay(10);
+      PixelShow( 0); // spare power
+    } else {
+      if (0 != NewState) {
+        PixelStatus( State);
+        PixelShow( 1);
+      }
     }
-  }
-#endif /*WITH_LED_SHOW_WIFI */
+  #endif /*WITH_LED_SHOW_WIFI */
 }
 
 // WITH_MOTOR ----------------------------------------------------------
@@ -4458,10 +4440,10 @@ void MotorSetup() {
     StepperInSetup();
   #endif /* STEPPER_IN_PULSE_PIN */
 
-  #ifdef WITH_RELAY
-    MyPinmode( WITH_RELAY, OUTPUT);
-    digitalWrite( WITH_RELAY, LOW);
-  #endif /* WITH_RELAY */
+  #ifdef WITH_RELAY_BLINK
+    MyPinmode( WITH_RELAY_BLINK, OUTPUT);
+    digitalWrite( WITH_RELAY_BLINK, LOW);
+  #endif /* WITH_RELAY_BLINK */
 
   MaxXGet();
   SpeedXGet();
@@ -4697,12 +4679,65 @@ void TimedIntV( void) {
   TimedInt( NULL);
 }
 
+#ifdef MODULE_OUTLETS
+  uint32_t SwitchTimeOnMillis;
+  int SwitchOnLastState;
+#endif /* MODULE_OUTLETS */
+
 void AutoActivated() {
 // this really is app specific
 
-#ifndef NO_APP
+
+#ifdef MODULE_OUTLETS
+  uint32_t CurrTime;
+
+  CurrTime = millis();
+  if (!digitalRead( WITH_SWITCH)) { // on
+    if (SwitchOnLastState) { // switch front little bit of time after rear 
+      if (DiffTime( CurrTime, SwitchTimeOnMillis) > 4000) {
+        SwitchTimeOnMillis = CurrTime - 5000;
+      } else if (DiffTime( CurrTime, SwitchTimeOnMillis) > 2000) {
+        digitalWrite( D5, HIGH);// Av on
+        PixelShow99( 99, 99, 99, 0);
+        dbgprintf( 2, "PosA Full On\n");
+      } else if (DiffTime( CurrTime, SwitchTimeOnMillis) > 200) { // 20 ms each sine at 50Hz
+        digitalWrite( D6, HIGH);//Arr on
+        PixelShow99( 0, 99, 0, 0);
+        dbgprintf( 2, "PosB On 2\n");
+      } else if (DiffTime( CurrTime, SwitchTimeOnMillis) > 100) { // 20 ms each sine at 50Hz
+        digitalWrite( D8, HIGH);//Main on
+        PixelShow99( 0, 49, 0, 0);
+        dbgprintf( 2, "PosC On 1\n");
+      }
+    }else {
+      SwitchTimeOnMillis = CurrTime;
+      SwitchOnLastState = 1;
+    }
+  }else { // Off
+    if (SwitchOnLastState) { // last was on, go to off
+      SwitchTimeOnMillis = millis();
+      SwitchOnLastState = 0;
+    } else{
+      if (DiffTime( CurrTime, SwitchTimeOnMillis) > 4000) {
+        SwitchTimeOnMillis = CurrTime - 5000;
+      } else if (DiffTime( CurrTime, SwitchTimeOnMillis) > 2000) {
+        digitalWrite( D8, LOW);//All off
+        PixelShow99( 0, 0, 0, 0);
+        dbgprintf( 2, "PosE All Off\n");
+      } else if (DiffTime( CurrTime, SwitchTimeOnMillis) > 1900) {
+        digitalWrite( D6, LOW);//Arr off
+        PixelShow99(  0, 49, 0, 0);
+        dbgprintf( 2, "PosF Off 2\n");
+      } else if (DiffTime( CurrTime, SwitchTimeOnMillis) > 100) {
+        digitalWrite( D5, LOW);// Av off
+        PixelShow99(  0, 99, 0, 0);
+        dbgprintf( 2, "PosD Av Off 1\n");
+      } 
+    }
+  }
+#endif /* MODULE_OUTLETS */
+
   static int LastMs = 0;
-  // orig rail 1000
   int CurMs = millis();
   #ifdef WITH_MOTOR
     Motor_t* pMotor;
@@ -4724,6 +4759,7 @@ void AutoActivated() {
     //dbgprintf( 2, "MyX %i, MyY %i", MyX, MyY);
     //dbgprintf( 2, "VectX %i, VectY %i\n", VectX, VectY);
     
+  #ifdef MODULE_ADLER
     #ifdef WITH_MOTOR
       if (MOTOR_NB >0) {
         pMotor = &(MotorArray[0]);
@@ -4773,22 +4809,9 @@ void AutoActivated() {
       }
       //dbgprintf( 2, "MyY %i ", MyY);
       //dbgprintf( 2, "LastPosY %i \n", MotorArray[1].LastPos);
-      /*
-      if(HIGH != digitalRead( StopperPins[1])) {
-        dbgprintf( 2, "touch max\n");
-        StopperMax = (StopperMax*2+1000)/3;
-      } else {
-        StopperMax = (StopperMax*2+0)/3;
-      
-      }
-      //dbgprintf( 2, "max %i\n", StopperMax);
-      if (StopperMax > 500) {
-        dbgprintf( 2, "real max\n");
-              MyY = MaxY+1;
-      }
-      */
       #endif /* WITH_STOPPER */
     #endif /* WITH_MOTOR */
+  #endif /* MODULE_ADLER */
 
     if ((MyX > MaxX) && (SensX > 0)) {
       VectX = -SpeedX;
@@ -4820,7 +4843,7 @@ void AutoActivated() {
   //PixelShow99( K , K/2 , 0 , 0);
   //PixelShow99( K , K/2 , 0 , 1);
 
-#ifdef WITH_RELAY
+#ifdef WITH_RELAY_BLINK
 // marianne light blink
   Rand = random(9999);
 
@@ -4828,28 +4851,31 @@ void AutoActivated() {
   K = constrain(K, 0, 1000); 
   dbgprintf( 3, "Relay %i\n", K);
   if (K < 100) {
-    digitalWrite( WITH_RELAY, LOW);
+    digitalWrite( WITH_RELAY_BLINK, LOW);
   } else if (K < 400) {
     K = map( K, 100, 400, 0, 10000);
     if (K>Rand) {
-      digitalWrite( WITH_RELAY, LOW);
+      digitalWrite( WITH_RELAY_BLINK, LOW);
     } else {
-      digitalWrite( WITH_RELAY, HIGH);
+      digitalWrite( WITH_RELAY_BLINK, HIGH);
     }
   } else if (K < 900) {
     K = map( K, 400, 900, 0, 10000);
     if (K>Rand) {
-      digitalWrite( WITH_RELAY, LOW);
+      digitalWrite( WITH_RELAY_BLINK, LOW);
     } else {
-      digitalWrite( WITH_RELAY, HIGH);
+      digitalWrite( WITH_RELAY_BLINK, HIGH);
     }
   } else {
-    digitalWrite( WITH_RELAY, HIGH);
+    digitalWrite( WITH_RELAY_BLINK, HIGH);
   }
-  #endif /* WITH_RELAY */
+  #endif /* WITH_RELAY_BLINK */
 
-#endif /* NO_APP */
-    
+#ifdef WITH_APP
+  WITH_APP 
+#endif WITH_APP
+
+
 }
 
 int Automation( void) {
@@ -5024,6 +5050,18 @@ void setup() {
   if (ACTIVITY_LED > 0) {
     MyPinmode( ACTIVITY_LED, OUTPUT); // Activity
   }
+
+  #ifdef MODULE_OUTLETS
+    MyPinmode( D6, OUTPUT);
+    MyPinmode( D5, OUTPUT);
+    MyPinmode( D8, OUTPUT);
+    digitalWrite( D6, LOW);// Av
+    digitalWrite( D5, LOW);// Arr
+    digitalWrite( D8, LOW);// All relays
+    PixelShow99( 0, 0, 0, 0);
+    SwitchTimeOnMillis = millis()-5000;
+    SwitchOnLastState = 0;
+  #endif /* MODULE_OUTLETS */
 
   #ifdef WITH_STOPPER
     MyPinmode( StopperPins[0], INPUT_PULLUP);
