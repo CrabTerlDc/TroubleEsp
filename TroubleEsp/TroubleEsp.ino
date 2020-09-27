@@ -1,4 +1,4 @@
-#define HARDWARE_NAME "TASS_20200926"
+#define HARDWARE_NAME "TASS_20200927c"
 
 /*
   Trouble Software for ESP8266, ESP32 and Co
@@ -728,6 +728,9 @@ extern "C" {
 
 #ifdef WITH_STOPPER
   uint8_t StopperPins[] = WITH_STOPPER;
+
+  //#define STOPPER_UNTOUCH HIGH
+  #define STOPPER_UNTOUCH LOW
 #endif /* WITH_STOPPER */
 
 
@@ -789,7 +792,8 @@ extern "C" {
     uint32_t P2;
     uint32_t T2ms;
 
-    int8_t Order;
+    int8_t Order;      // -1 at boot, 1..3 if WishP2 set externally, 5 to set everything
+    uint8_t MotNum;    // to retrieve when we got just a pointer on the struct
     pr_int32_t WishP2; // the app part (out of the interruption) asks for a pos
     pr_uint32_t WishDTms;
     
@@ -798,8 +802,17 @@ extern "C" {
     uint32_t HomingMs;
     uint8_t DriverMode; // MotorMode_t MODOR_DC_LR & co.
 
-    uint8_t Pin1;
-    uint8_t Pin2;
+    uint8_t Pin1; // stepper:pin dir
+    uint8_t Pin2; // stepper:pin pulse
+
+    #ifdef WITH_STOPPER
+      uint8_t DMin; // stopper min
+      uint8_t DMax; // stopper max
+      uint8_t LastMin;
+      uint8_t LastMax;
+      uint16_t ReadMin;
+      uint16_t ReadMax;
+    #endif /* WITH_STOPPER */
 
     pr_uint32_t Pos; // the position of the motor for the external world
 
@@ -1709,6 +1722,12 @@ void StateDumpBld_2( String& LocStr) {
         default : LocStr  +=  "undef"; break;
       }
       LocStr += "\n";
+    #ifdef WITH_STOPPER
+      if (PinNumAcceptable( pMotor->DMin))
+        LocStr  += "  , StopMin:" + CSTRI( pMotor->DMin) + "\n";
+      if (PinNumAcceptable( pMotor->DMax))
+        LocStr  += "  , StopMax:" + CSTRI( pMotor->DMax) + "\n";
+    #endif /* WITH_STOPPER */
   }
 
   LocStr  +=  " change mode '00 xx 000yf', xx is motor num\n";
@@ -1768,12 +1787,6 @@ void StateDumpBld_2( String& LocStr) {
   LocStr  +=  "\n";
 #endif /* WITH_ADC */
 
-#ifdef WITH_STOPPERS
-  LocStr  +=  "-Stop presents" +"\n";
-  // LocStr  +=  "-StopMin :" + CSTRI( digitalRead( STOPPER_MIN_PIN)) + ", pin:" + CSTRI(STOPPER_MIN_PIN) +"\n";
-  // LocStr  +=  "-StopMax :" + CSTRI( digitalRead( STOPPER_MAX_PIN)) + ", pin:" + CSTRI(STOPPER_MAX_PIN) +"\n";
-#endif /* WITH_STOPPERS_A */
-
   #if defined( WITH_SCREEN_SSD1306)
       LocStr  +=  "-Screen SSD1306 :" + CSTRI( ScreenParams[0]) + ", Pin :" + CSTRI( ScreenParams[1]) + " " + CSTRI( ScreenParams[2]) + "\n";
   #elif defined(WITH_SCREEN)
@@ -1813,6 +1826,14 @@ void SetNodeNum( int Num) {
     WifiInit();
   }
 #endif /* WITH_WIFI */
+}
+
+/* Description: true if pin number is acceptable for the device .. so put -1 in a pn def deactivate it
+ */
+int PinNumAcceptable( uint8_t PinNum) {
+  if (PinNum >= 0 && PinNum < 240)
+    return( 1); // true
+  return( 0); // false
 }
 
 void MyPinmode( uint8_t Pin, int Mode) {
@@ -2356,9 +2377,9 @@ void OscS2( OSCMESSAGE &Msg) {
   }
 
   dbgprintf( 3, " OscS2 %8ims -a ", DiffTime( OscLastSendMs, millis()));
-    // HI_GIRL : here your specific commands from OSC
-    dbgprintf( 3, " Args %i %i", M1, M2);
-    dbgprintf( 3, " %i-\n", M3);
+  // HI_GIRL : here your specific commands from OSC
+  dbgprintf( 3, " Args %i %i", M1, M2);
+  dbgprintf( 3, " %i-\n", M3);
   MotorSet( 1, M1);
 }
 
@@ -2716,35 +2737,6 @@ void FctRun( uint8_t* Str, uint32_t Num) {
   }
 }
 
-// just give the 4 last digits and follow the rest of the digits, like a gear doing more than one turn
-uint32_t PartialAdd4( uint32_t Orig, int32_t Delta) {
-  // Delta     0000     9999
-  // Orig  xxxx0000 xxxx9999
-  int32_t My4;
-  uint32_t Rest;
-  uint32_t Result;
-
-  My4 = Orig % 10000;
-  Rest = Orig - My4;
-
-  Result = Rest + Delta;
-
-  if (Orig >= 5000) {
-    if (abs(My4 - Delta)< 5000) {
-      Result = Rest + Delta;
-    } else if (Delta < 5000) {
-      Result =  Rest + Delta + 10000;
-    } else { 
-      Result =  Rest + Delta - 10000;
-    }
-  }
-
-  //dbgprintf( 2, "PartialAdd4 : Orig %i Delta %i Result %i\n", Orig, Delta, Result);
-  // TODO_LATER : what about > 4M, cyclic
- 
-  return( Result);
-}
-
 // command (debug) enter here
 void CmdLineParse( unsigned char Ch) {
   char EprSet = 0;
@@ -3028,7 +3020,6 @@ void CmdLineParse( unsigned char Ch) {
                   pMotor->Order = 0;
                 }
                 pr_int32_write( pMotor->WishP2, DbgSign*(DbgNum % 10000));
-                // TODO_HERE mostly ready pr_uint32_write( pMotor->WishP2, PartialAdd4( pr_uint32_read(pMotor->WishP2), DbgNum % 10000));
               }
               break;
           }
@@ -3421,6 +3412,7 @@ uint32_t StepperLoop( Motor_t* pMotor, uint32_t ExpectedPos) {
   uint8_t DirPin = pMotor->Pin1;
   uint8_t PulsPin = pMotor->Pin2;
   uint32_t StepperPos = pMotor->LastPos;
+  uint8_t TMin = 0;
 
   CurTime = millis();
 
@@ -3428,6 +3420,31 @@ uint32_t StepperLoop( Motor_t* pMotor, uint32_t ExpectedPos) {
   // dbgprintf( 2, " Pos:%5u, Expect:%5u,", StepperPos, ExpectedPos);
   // dbgprintf( 2, " D:%5i\n", Dist);
 
+  #ifdef WITH_STOPPER
+    if( PinNumAcceptable(pMotor->DMin))
+      pMotor->ReadMin = (pMotor->ReadMin *3 + (STOPPER_UNTOUCH != digitalRead( pMotor->DMin))*100)/4;
+    TMin = pMotor->ReadMin > 50;
+    if (TMin != pMotor->LastMin) {
+      pMotor->LastMin = TMin;
+      dbgprintf( 2, "touch min %i %i\n", pMotor->MotNum, pMotor->LastMin);
+    }
+
+    if (TMin && pMotor->HomingOn) { // fin de homing
+      dbgprintf( 2, "end homing %i %i\n", pMotor->MotNum, pMotor->LastMin);
+      pMotor->HomingOn = 0;
+      pMotor->LastPos = pMotor->P2 = pMotor->P1 = 0;
+      pMotor->WishDec = 10; // move a little away from stopper
+      pr_int32_write( pMotor->WishP2, 0);
+      pMotor->Order = 0;
+    }
+  #endif /* WITH_STOPPER */
+  #ifdef WITH_STOPPER _A
+    // TODO_HERE
+    //if (PinNumAcceptable( DMax) && STOPPER_UNTOUCH != digitalRead( DMax)) {
+    //  dbgprintf( 2, "touch max %i %i\n", MotNum, DMax);
+    //  Res = 1;
+    //}
+  #endif /* WITH_STOPPER */
   if (Dist < 0) {
     if (1 == pMotor->StepperD) {
       pMotor->StepperD = 0;
@@ -3437,7 +3454,8 @@ uint32_t StepperLoop( Motor_t* pMotor, uint32_t ExpectedPos) {
       StepperPos --;
       pMotor->StepperP = !pMotor->StepperP;
       // puls <- StepperP
-      digitalWrite( PulsPin, pMotor->StepperP);
+      if (!TMin)
+        digitalWrite( PulsPin, pMotor->StepperP);
     }
   } else if (Dist > 0) {
     if (0 == pMotor->StepperD) {
@@ -4495,7 +4513,7 @@ void AdcProcess( uint8_t Act) {
       // send direct to motor
       for (Idx = 0; Idx < MOTOR_NB; Idx++) {
         Motor_t* pMotor = &(MotorArray[Idx]);
-        pr_uint32_write( pMotor->WishP2, AdcVal);
+        pr_int32_write( pMotor->WishP2, AdcVal);
         if(pMotor->Order < 3) {
           pMotor->Order++;
         }
@@ -4657,6 +4675,8 @@ void MotorSetup() {
 
   for (Idx = 0; Idx < MOTOR_NB; Idx++) {
     pMotor = &(MotorArray[Idx]);
+
+    pMotor->MotNum = Idx; // useful to debug when we got just the pointer
     #if defined( MODULE_RADEAU)
     pr_uint32_write( pMotor->WishDTms, 1000);// TODO_HERE : en param sauvegardé
     #else
@@ -4672,6 +4692,17 @@ void MotorSetup() {
     if (0 != UserMode) {
       pMotor->DriverMode = UserMode;
     }
+    #ifdef WITH_STOPPER
+      pMotor->DMin = StopperPins[Idx*2]; // stopper min
+      pMotor->DMax = StopperPins[1+Idx*2]; // stopper max
+
+      if (PinNumAcceptable( pMotor->DMin))
+        MyPinmode( pMotor->DMin, INPUT_PULLUP);
+      if (PinNumAcceptable( pMotor->DMax))
+        MyPinmode( pMotor->DMax, INPUT_PULLUP);
+      pMotor->ReadMin = 0;
+      pMotor->ReadMax = 0;
+    #endif /* WITH_STOPPER */
   }
 
   pMotor->LastPulseUs = micros();
@@ -4716,16 +4747,12 @@ void MotorHome( int MotNum, int St) {
     if (St) {
       pMotor->HomingOn = 1;
       pMotor->HomingMs = millis();
+      pMotor->WishDec = 0;
+      pMotor->Order = 0;
     
       pr_uint32_write( (pMotor->Pos), 6000);
       MotorSet( MotNum, 0);
-    } else { // quit homing mode
-      pMotor->HomingOn = 0;
-      pMotor->HomingMs = millis();
-    
-      pr_uint32_write( pMotor->Pos, 0);
-      MotorSet( MotNum, 0);
-    }
+    } // else quit homing mode done in loops
   }
 }
 
@@ -4756,7 +4783,6 @@ void MotorSet( int MotNum, int MotVal) {
                   pMotor->Order = 0;
                 }
                 pr_int32_write( pMotor->WishP2, MotVal);
-                // TODO_HERE mostly ready pr_uint32_write( pMotor->WishP2, PartialAdd4( pr_uint32_read(pMotor->WishP2), DbgNum % 10000));
         }
         break;
     }
@@ -4769,33 +4795,12 @@ void MotorSet( int MotNum, int MotVal) {
 }
 
 // the released state of the sensors
-//#define STOPPER_UNTOUCH HIGH
-#define STOPPER_UNTOUCH LOW
-
 /* Description: consider switches to stop motor if touched
  * returns: 0 no limit touched
  */
 int MotorLimit( int MotNum, int DMin, int DMax) {
   int Res = 0;
   Motor_t* pMotor = &(MotorArray[MotNum]);
-  #ifdef WITH_STOPPER
-      if(DMin>=0 && DMin<250 && STOPPER_UNTOUCH != digitalRead( DMin)) {
-        //dbgprintf( 2, "touch min %i %i\n", MotNum, DMin);
-        if (pMotor->HomingOn)
-        {  
-          MotorHome( MotNum, 0 /* end of homing */);
-          dbgprintf( 2, "homing done %i\n", MotNum);
-        } else {
-          pr_uint32_write( pMotor->Pos, 0);      
-        }
-        Res = -1;
-      }
-
-      if(DMax>=0 && DMax<250 && STOPPER_UNTOUCH != digitalRead( DMax)) {
-        dbgprintf( 2, "touch max %i %i\n", MotNum, DMax);
-        Res = 1;
-      }
-  #endif /* WITH_STOPPER */
   if (pMotor->HomingOn && difftime( pMotor->HomingMs, millis()) > 20000) {
     // timeout homing procs
     pMotor->HomingOn = !pMotor->HomingOn;
@@ -5454,17 +5459,6 @@ void setup() {
     SwitchTimeOnMillis = millis()-5000;
     SwitchOnLastState = 0;
   #endif /* MODULE_OUTLETS */
-
-  #ifdef WITH_STOPPER
-    if (StopperPins[0] >= 0 && StopperPins[0] < 240)
-      MyPinmode( StopperPins[0], INPUT_PULLUP);
-    if (StopperPins[0] >= 1 && StopperPins[1] < 240)
-      MyPinmode( StopperPins[1], INPUT_PULLUP);
-    if (StopperPins[0] >= 2 && StopperPins[2] < 240)
-      MyPinmode( StopperPins[2], INPUT_PULLUP);
-    if (StopperPins[0] >= 3 && StopperPins[3] < 240)
-      MyPinmode( StopperPins[3], INPUT_PULLUP);
-  #endif /* WITH_STOPPER */
 
   #ifdef WITH_WS2812
     PixelInit();
