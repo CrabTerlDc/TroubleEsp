@@ -1,3 +1,5 @@
+#define HARDWARE_NAME "TASS_20200926"
+
 /*
   Trouble Software for ESP8266, ESP32 and Co
 
@@ -19,6 +21,7 @@
     220786/34660 on 20160204
 
   TODO_LIST
+  - compatibility https://ossia.io/ "C:\Program Files\ossia score 3.0.0\score.exe"
   - DC Dir+Pwm (MD50) or Left+Right (or stepper?) selectable
   - DC & step drive per speed,
   - DC&Step, stoppers, homing, autotune, followers
@@ -35,6 +38,11 @@
   ... memory not so secure, power down before rx tx plugs or config is forgotten, think about trying "esp filesystem" rumors
 
   Done :
+  TASS_20200920
+  - more osc to drive motors for the tesse-table project
+  - arduino ide 1.8.13, board esp8266 2.7.4
+  - deactivate wifi SRV from ifdef (router like) due to poor perfs with wifimulti & stuff
+   ...
   - 'I' 'i' input to return
   - ESP32 minimal support
   - screen SSD1306
@@ -81,44 +89,47 @@
   - connect another network ssid/pwd
   - autorefresh status page
   CRAB_20170121
-  Change play method to avoid stutter
+  - Change play method to avoid stutter
   CRAB_20170120
-  micro http:80 to conf like an IoT,
-    player emits ITS_<node number>/192.168.4.1 to configure
-    passenger emits BEN_<node number>/192.168.4.1 to configure
+  - micro http:80 to conf like an IoT,
+  - player emits ITS_<node number>/192.168.4.1 to configure
+  - passenger emits BEN_<node number>/192.168.4.1 to configure
   CRAB_20160803 (and ..02)
-  B switch for the B guy
-  play 'till the end of the track
+  - B switch for the B guy
+  - play 'till the end of the track
   CRAB_20160228 (and ..27)
-  soft wifi power adjust w..z reserved (ignored) - lots of books were set to 'x' meaningless
-  support the '0' book
-  better levelling, corrected
+  - soft wifi power adjust w..z reserved (ignored) - lots of books were set to 'x' meaningless
+  - support the '0' book
+  - better levelling, corrected
   CRAB_20160717
-  securize parameters by 3 copies
-  corrections in head remove detect
-  shut after x sec without pressed
-  don't play if no passenger strong enough, i.e. too far
+  - securize parameters by 3 copies
+  - corrections in head remove detect
+  - shut after x sec fwithout pressed
+  - don't play if no passenger strong enough, i.e. too far
   CRAB_20160528
-  default power to 128-(MAX_TPW/2) (minimal electrics)
-  restart button for ROLE_MULTI (to test)
-  wifi detect leverage (to test)
-  restart if head removed more tan 2 seconds
-  corrected glitch auto-play
+  - default power to 128-(MAX_TPW/2) (minimal electrics)
+  - restart button for ROLE_MULTI (to test)
+  - wifi detect leverage (to test)
+  - restart if head removed more tan 2 seconds
+  - corrected glitch auto-play
   CRAB_20160204
-  TODO_LATER : http://playground.arduino.cc/Learning/Memory prefix necessary strigs with F("")
-  led strip Ko , solved by arduino environment reinstalled
+  - TODO_LATER : http://playground.arduino.cc/Learning/Memory prefix necessary strigs with F("")
+  - led strip Ko , solved by arduino environment reinstalled
   CRAB_20150102 :
-  power emission tunable
+  - power emission tunable
   CRAB_20151229 :
-  first ESP revision for Gui & Ben
+  - first ESP revision for Gui & Ben
 
   Player full avec 1 seule batterie 2500ma ... 2h15?...
   Passenger 2500ma ... 24H
 
   example pastille 070V 00R 87P 100m
-*/
 
-#define HARDWARE_NAME "CRAB_20171228"
+
+https://dl.espressif.com/dl/package_esp32_index.json
+  LOLIN Wemos D1 R2 & mini
+https://arduino.esp8266.com/stable/package_esp8266com_index.json
+*/
 
 // a way to not have my house AP-Pwd in the build
 // if none just comment the include or create an Mines.h with ESP8266_MULTIPERSO full of wifiMulti.addAP
@@ -128,12 +139,12 @@
   // global module kind
   //#define MODULE_LAAPIN
   //#define MODULE_STEPPER
-  //#define MODULE_MWS // drive NXT motor
+  #define MODULE_MWS // drive NXT motor
   //#define MODULE_TROUBLE
   #ifdef ESP32
-    #define MODULE_DEV32
+  //  #define MODULE_DEV32
   #else
-    #define MODULE_DEV
+  //  #define MODULE_DEV
   #endif
 #endif /* WITH_MODULE */
 
@@ -157,14 +168,14 @@
   #define WITH_SWITCH 14
   //#define WITH_STEPPER_IN { 0, 4}
   //#define WITH_STOPPER
-  #define WITH_SERVO  { 2} // rem : tried {12} alone, need {12, 2} to move TODO_LATER : wtf?
+  #define WITH_SERVO  { 2}
   #define WITH_ADC      A0
 
   // #define WITH_NOKIA5110
   // #define WITH_NOKIA5110_ADAFRUIT
   // #define WITH_OLED
 
-#elif defined (MODULE_STEPPER) // ---------------
+#elif defined (MODULE_STEPPER) // ------Ste---------
   #define WITH_WIFI
   #define WITH_WIFICLIENT // connect other network
   #define WITH_IOTMUTUAL // web server
@@ -179,7 +190,7 @@
   //#define WITH_STOPPER
   //#define WITH_GRAYCODE_IN { 12, 13}
 #elif defined (MODULE_MWS) // ---------------
-// http://www.philohome.com/nxtmotor/nxtmotor.htm
+// http://www.philohome.com/nxtmotor/nxtmotor.htm'S'
   #define WITH_WIFI
   #define WITH_WIFICLIENT // connect other network
   #define WITH_IOTMUTUAL // web server
@@ -211,12 +222,16 @@
   #define WITH_OSC
 
   // #define WITH_WS2812    0
-  #define WITH_ADC      A0
+  //#define WITH_ADC      A0
   //#define WITH_STEPPER_IN { 12, 13} // D6 D7
-  #define WITH_STEPPER {  D2, D3, D7, D6} // DIR1 PULS1
+  //#define WITH_STEPPER {  D2, D3, D7, D6} // DIR1 PULS1
 
-  #define WITH_STOPPER { D5, D4} // min max
+  //#define WITH_STOPPER { D5, D4} // min max
 
+  #define WTH_HALL_HUV { D5, D6, D7} // pos capture
+  // #define WITH_DCMOTOR { D2, D4}
+
+  #define WITH_SERVO  { D3} // rem : tried {12} alone, need {12, 2} to move TODO_LATER : wtf?
 #elif defined( MODULE_DEV32) // --------------- dev ESP32 Yeah
 
   #define WITH_WIFI
@@ -266,7 +281,7 @@
 #define NODEMCU_D5 14
 #define NODEMCU_D6 12
 #define NODEMCU_D7 13 // rem: blink on prog
-#define NODEMCU_D8 15
+#define NODEMCU_D8 15 // no pullup?
 #define NODEMCU_D9  3 // Rx ?
 #define NODEMCU_D10 1 // Tx ?
 
@@ -356,7 +371,7 @@ typedef int32_t pr_int32_t[3];
       // C:\Users\utilisateur\Documents\Arduino\libraries\WiFi\src\WiFiUdp.h
       #include <WiFiUdp.h>
 
-      // https://github.com/CNMAT/OSC
+      // github.com/CNMAT/OSC
       // C:\Users\utilisateur\Documents\Arduino\libraries\OSC-master
       #include <OSCMessage.h> // this include seems particularly order dependent ESP8266WiFi.h, WiFiUdp.h, OSCMessage.h
       #include <OSCBundle.h>
@@ -400,13 +415,15 @@ void TimeRunningDump( String& LocStr);
 #endif
 
 #ifdef WITH_WIFICLIENT
-  #ifdef ESP32
-    #include <WiFiMulti.h>
-  #endif /* ESP32 */
-  #ifdef ESP8266
-    #include <ESP8266WiFiMulti.h>
-  #endif /* ESP8266 */
-  
+  #ifdef ESP8266_MULTIPERSO
+    #ifdef ESP32
+      #include <WiFiMulti.h>
+    #endif /* ESP32 */
+    #ifdef ESP8266
+      #include <ESP8266WiFiMulti.h>
+    #endif /* ESP8266 */
+  #endif /* ESP8266_MULTIPERSO */
+
   void WifiCliDocState( String& LocStr);
 #endif /* WITH_WIFICLIENT */
 
@@ -448,6 +465,10 @@ void TimeRunningDump( String& LocStr);
     #include <ESP8266mDNS.h>
   #endif /* ESP8266 */
 #endif /* WITH_IOTMUTUAL */
+
+  #ifdef WTH_HALL_HUV
+  int HallHuvPins[]=WTH_HALL_HUV;
+  #endif /* WTH_HALL_HUV */
 
 #ifdef WITH_STEPPER
   // So ... where do you want to wire the stepper driver
@@ -590,21 +611,24 @@ uint8_t DfpPins[] = WITH_DFPLAYER;
   #endif
 #endif /* WITH_IOTMUTUAL */
 
-#ifdef WITH_WIFICLIENT
-
   typedef enum WifiState_e {
-      WifiState_OFF
-    , WifiState_STABLE
-    , WifiState_TOCONNECT
-    , WifiState_JUSTCONNECTED
+      WifiState_OFF           // 0
+    , WifiState_STABLE        // 1
+    , WifiState_TOCONNECT     // 2
+    , WifiState_JUSTCONNECTED // 3
+    , WifiState_WAITRECO      // 5
   } WifiState_t;
 
-  #ifdef ESP32
-    WiFiMulti wifiMulti;
-  #endif /* ESP32 */
-  #ifdef ESP8266
-    ESP8266WiFiMulti wifiMulti;
-  #endif /* ESP8266 */
+#ifdef WITH_WIFICLIENT
+  #ifdef ESP8266_MULTIPERSO
+    #ifdef ESP32
+      WiFiMulti wifiMulti;
+    #endif /* ESP32 */
+    #ifdef ESP8266
+      ESP8266WiFiMulti wifiMulti;
+    #endif /* ESP8266 */
+  #endif /* ESP8266_MULTIPERSO */
+
   WiFiClient CliWF;
   WifiState_t WifiCliConnectState = WifiState_OFF; // client connection state 1-no connection but required, 2- just connected, 0 - stable
   char CliSSID[WIFI_IDLEN];// up to 32 or 31+z
@@ -614,11 +638,12 @@ uint8_t DfpPins[] = WITH_DFPLAYER;
 #ifdef WITH_OSC
   #ifdef WITH_WIFICLIENT
     WiFiUDP OscUdpCli;
-    uint8_t OscWifiCliState = 0;
+    uint8_t OscWifiCliState = WifiState_OFF;
+    int OscWifiCliRecoMs = 0;
     #endif /* WITH_WIFICLIENT */
 
   WiFiUDP OscUdpSrv;
-  uint8_t OscWifiSrvState = 0;
+  uint8_t OscWifiSrvState = WifiState_OFF;
 
   int OscLastCmd;
   int OscLastCount = 0;
@@ -626,13 +651,17 @@ uint8_t DfpPins[] = WITH_DFPLAYER;
   int OscLastSendMs = 0;
   uint32_t OscCmdSequence = 0;
   uint8_t OscReply = 0;
+  int OscRegulMs = 0;
 
+  //#define OscUdpIp( Addr) (Addr | 0xFF000000)
+  #define OscUdpIp( Addr) (255,255,255,255)
   #define OSC_DEFAULT_ADDR "/"BEN_TAG
   #define OSC_DEFAULT_CMD1 "h"
   #define OSC_DEFAULT_CMD2 "H"
-  #define OSC_PORT 8000
+  #define OSC_PORT 9999
   OSCErrorCode OscError;
   #define OSC_CMD_LEN 30
+  #define OSC_ADDR_LEN 12 // like "BEN_0xx_S2"
   char OscAddr[OSC_CMD_LEN];
   #ifdef WITH_SWITCH
     char OscCmd1[OSC_CMD_LEN]; // pushed
@@ -641,7 +670,11 @@ uint8_t DfpPins[] = WITH_DFPLAYER;
   #ifdef WITH_ADC
     char OscCmd3[OSC_CMD_LEN]; // ADC
   #endif /* WITH_ADC */
-  char OscAddrMine[OSC_CMD_LEN];
+  char OscAddrMine[OSC_ADDR_LEN];
+  char OscAddrS [OSC_ADDR_LEN];// osc motor 1 (and_or 2) command
+  char OscAddrI1[OSC_ADDR_LEN];// osc motor 1 init
+  char OscAddrS2[OSC_ADDR_LEN];// osc motor 2 command
+  char OscAddrI2[OSC_ADDR_LEN];// osc motor 2 init
 #endif /* WITH_OSC */
 
 
@@ -674,7 +707,7 @@ extern "C" {
 #else
   #define TimerSetup()
   #define TimerStart()
- #define TimerStop()
+  #define TimerStop()
 #endif /* WITH_TIMER */
 
 
@@ -695,12 +728,6 @@ extern "C" {
 
 #ifdef WITH_STOPPER
   uint8_t StopperPins[] = WITH_STOPPER;
-
-  #define STOPPER_MIN_PIN StopperPins[0]
-  #define STOPPER_MAX_PIN StopperPins[1]
-
-  int32_t StopperMax = 0;
-  int32_t StopperMin = 0;
 #endif /* WITH_STOPPER */
 
 
@@ -727,16 +754,13 @@ extern "C" {
   #define StepperNb (sizeof( StepperPins) / (2*sizeof(uint8_t)))
   #define MOTOR_STEPPER_IDX ServoNb
 #else /* WITH_STEPPER */
-  #define StepperNb 0;
+  #define StepperNb 0
 #endif /* WITH_STEPPER */
 
 #ifdef WITH_DCMOTOR
   uint8_t dcMotorPins[] = WITH_DCMOTOR;
-  #define dcMotorNb (sizeof( StepperPins) / (2*sizeof(uint8_t)))
-  #define MOTOR_DC_IDX = (ServoNb + StepperNb)
-  
-  #define pMotor->Pin1 dcMotorPins[0]
-  #define pMotor->Pin2 dcMotorPins[1]
+  #define dcMotorNb (sizeof( dcMotorPins) / (2*sizeof(uint8_t)))
+  #define MOTOR_DC_IDX (ServoNb + StepperNb)
 #else /* WITH_DCMOTOR */
   #define dcMotorNb 0
 #endif /* WITH_DCMOTOR */
@@ -771,6 +795,7 @@ extern "C" {
     
     int16_t WishDec; // TODO_LATER probab pr_ too
     uint8_t HomingOn;
+    uint32_t HomingMs;
     uint8_t DriverMode; // MotorMode_t MODOR_DC_LR & co.
 
     uint8_t Pin1;
@@ -790,10 +815,8 @@ extern "C" {
 
     uint16_t InstVal; // las val set in power pin(pwm)
 
-    #ifdef WITH_STEPPER
-      uint8_t StepperD; // current dir
-      uint8_t StepperP; // current Pulse (up or down)
-    #endif /* WITH_STEPPER */
+    uint8_t StepperD; // current dir
+    uint8_t StepperP; // current Pulse (up or down)
 
   } Motor_t;
 
@@ -1244,6 +1267,8 @@ void EpromDumpBld( String& LocStr) {
     LocStr +=  ", HDW:MWS";
   #elif defined( MODULE_TROUBLE)
     LocStr +=  ", HDW:Trouble";
+  #elif defined(MODULE_HALLOWLIGHT)
+    LocStr +=  ", HDW:"WITH_MODULE;
   #endif
 
   LocStr +=  ", rev. " HARDWARE_NAME;
@@ -1304,11 +1329,11 @@ void EpromDumpBld( String& LocStr) {
   LocStr  +=  "\"d : \"x" + CSTRI(WIFI_PWDLEN - 1) + "x\"d PWD Wifi as client\n"; // E
 
   #ifdef ESP8266_MULTIPERSO
-  if (1 == WifiAddsGet()) {
-    LocStr  +=  "*01 00 000(1)f Additionnal list activated\n";
-  } else {
-    LocStr  +=  "*01 00 000(0)f Additionnal list not activated\n";
-  }
+    if (1 == WifiAddsGet()) {
+      LocStr  +=  "*01 00 000(1)f Additionnal list activated\n";
+    } else {
+      LocStr  +=  "*01 00 000(0)f Additionnal list not activated\n";
+    }
   #endif /* ESP8266_MULTIPERSO */
 #endif /* WITH_WIFICLIENT */
 #ifdef WITH_OSC
@@ -1364,6 +1389,10 @@ void EpromDumpBld( String& LocStr) {
   LocStr +=  "*xxxxF : Custom function\n"; // example 01F open garage door
   LocStr +=  "       01F : Garage door\n";
   LocStr +=  "   xxxx02F : full led white\n";
+  #ifdef MODULE_RADEAU
+    LocStr +=  "   03F : inject OSC push\n"; 
+    LocStr +=  "   04F : inject OSC release\n";
+  #endif /* MODULE_RADEAU */
   LocStr +=  "*ccnnxxxxf : set internal parameter class(c) Id(n) value(x)\n"; // example DC motor mode PWM "00 00 0002 f"
 
 #ifdef WITH_DFPLAYER
@@ -1441,6 +1470,8 @@ void WifiCliDocState( String& LocStr) {
   LocStr += "-Wifi as client:";
   if ( WifiCliConnected()) {
     LocStr += " connected \n ";
+    LocStr += WiFi.SSID();
+    LocStr += ":";
     DumpIp (LocStr, WiFi.localIP());
     LocStr += " st:" + CSTRI( WifiCliConnectState);
     LocStr += "\n";
@@ -1448,6 +1479,9 @@ void WifiCliDocState( String& LocStr) {
     LocStr += " not connected ";
     LocStr += WiFi.status();
     LocStr += " st:" + CSTRI( WifiCliConnectState);
+    if (WifiState_JUSTCONNECTED ==WifiCliConnectState) {
+      LocStr += " JUSTCONNECTED";
+    }
     LocStr += "\n";
 
     if ( ROLE_PLAYER == RoleGet()) {
@@ -1461,67 +1495,82 @@ int WifiCliConnected() {
   if (WifiState_TOCONNECT == WifiCliConnectState) {
     return false;
   } else {
-    #if defined (ESP32)
-      //return (WiFi.status() == WL_CONNECTED);
-      return (wifiMulti.run() == WL_CONNECTED);
-    #elif defined( ESP8266)
-      return (wifiMulti.run() == WL_CONNECTED);
-    #else
+    #ifdef ESP8266_MULTIPERSO
+      #if defined (ESP32)
+        //return (WiFi.status() == WL_CONNECTED);
+        return (wifiMulti.run() == WL_CONNECTED);
+      #elif defined( ESP8266)
+        return (wifiMulti.run() == WL_CONNECTED);
+      #else
+        return (WiFi.status() == WL_CONNECTED);
+      #endif /* */
+    #else /* ESP8266_MULTIPERSO */
       return (WiFi.status() == WL_CONNECTED);
-    #endif /* */
+    #endif /* ESP8266_MULTIPERSO */
   }
 }
 
 void WifiCliLoop() {
-int SthToConnect = 0;
-  #ifdef WITH_WIFI
-  if ((WifiState_JUSTCONNECTED == WifiCliConnectState) && WifiCliConnected()) {
-    // detect lan conflict, not perfect but it do the tricks
-    uint32_t IpNumSrv = 0;
-    uint32_t IpNumCli = 0;
+  int SthToConnect = 0;
 
-    IpNumSrv = WiFi.softAPIP();
-    IpNumCli = WiFi.localIP();
-    if ( (IpNumSrv & 0xFFFFFF) == (IpNumCli & 0xFFFFFF) ) {
-      // try to act clean
-      #ifdef WITH_OSC
-        if (1 == OscWifiSrvState) {
-          // TODO_LATER : soupcons que ca coupe debug OscUdpSrv.stop();
-          OscWifiSrvState = 0;
-        }
-      #endif /* WITH_OSC */
-      dbgprintf( 2, " Warn - solve lan conflict", IpNumSrv);
-      dbgprintf( 2, " Srv 0x%x ", IpNumSrv);
-      dbgprintf( 2, " Cli 0x%x\n", IpNumCli);
-      // softAPConfig  ( local_ip  , gateway   , subnet    );
-      WiFi.softAPConfig( 0x0105A8C0, 0x0105A8C0, 0x00FFFFFF);
-    }
-    WifiCliConnectState = WifiState_STABLE;
-    dbgprintf( 2, " Wifi connected as client is stable\n");
+  if ((WifiState_STABLE == WifiCliConnectState) && !WifiCliConnected()) {
+    WifiCliConnectState = WifiState_TOCONNECT;
   }
-#endif /* WITH_WIFI */
+  
+  if ((WifiState_JUSTCONNECTED == WifiCliConnectState) && WifiCliConnected()) {
+    #ifdef WITH_WIFISRV
+      // detect lan conflict, not perfect but it do the tricks
+      uint32_t IpNumSrv = 0;
+      uint32_t IpNumCli = 0;
+
+      IpNumSrv = WiFi.softAPIP();
+      IpNumCli = WiFi.localIP();
+      if ( (IpNumSrv & 0xFFFFFF) == (IpNumCli & 0xFFFFFF) ) {
+        // try to act clean
+        #ifdef WITH_OSC
+          if (1 == OscWifiSrvState) {
+            // TODO_LATER : soupcons que ca coupe debug OscUdpSrv.stop();
+            OscWifiSrvState = WifiState_OFF;
+          }
+        #endif /* WITH_OSC */
+        dbgprintf( 2, " Warn - solve lan conflict", IpNumSrv);
+        dbgprintf( 2, " Srv 0x%x ", IpNumSrv);
+        dbgprintf( 2, " Cli 0x%x\n", IpNumCli);
+        // softAPConfig  ( local_ip  , gateway   , subnet    );
+        WiFi.softAPConfig( 0x0105A8C0, 0x0105A8C0, 0x00FFFFFF);
+      }
+    #endif /* WITH_WIFISRV */
+    WifiCliConnectState = WifiState_STABLE;
+    dbgprintf( 2, "Wifi - connected as client is stable\n");
+  }
 
   if (WifiState_TOCONNECT == WifiCliConnectState) {
-    if (0 != CliSSID[0]) {
-      #if defined (ESP32)
-        // sniff not ready, lock a little  ... 
-        wifiMulti.addAP( (char*)CliSSID, (char*)CliPWD);
-        //WiFi.begin( (char*)CliSSID, (char*)CliPWD);
-      #elif defined( ESP8266)
-        // wifiMulti.APlistClean();
-        wifiMulti.addAP( (char*)CliSSID, (char*)CliPWD);
-      #else
-        WiFi.begin( (char*)CliSSID, (char*)CliPWD);
-      #endif
-      SthToConnect = 1;
-    }
     #ifdef ESP8266_MULTIPERSO
-      if (1 == WifiAddsGet()) {
-        ESP8266_MULTIPERSO
-        // in mines.h, half dozen of wifiMulti.addAP( "myap", "mypwd");
+      if (0 != CliSSID[0]) {
+        #if defined (ESP32)
+          // sniff not ready, lock a little  ... 
+          wifiMulti.addAP( (char*)CliSSID, (char*)CliPWD);
+          //WiFi.begin( (char*)CliSSID, (char*)CliPWD);
+        #elif defined( ESP8266)
+          // wifiMulti.APlistClean();
+          wifiMulti.addAP( (char*)CliSSID, (char*)CliPWD);
+        #else
+          WiFi.begin( (char*)CliSSID, (char*)CliPWD);
+        #endif
         SthToConnect = 1;
       }
-    #endif
+      if (1 == WifiAddsGet()) {
+        // in mines.h, ESP8266_MULTIPERSO contains half dozen of wifiMulti.addAP( "myap", "mypwd");
+        ESP8266_MULTIPERSO
+        SthToConnect = 1;
+      }
+    #else /* ESP8266_MULTIPERSO */
+      if (0 != CliSSID[0]) {
+        WiFi.begin( (char*)CliSSID, (char*)CliPWD);
+        SthToConnect = 1;
+        dbgprintf( 2, "Wifi - attempt connect %s:%s\n", CliSSID, CliPWD);
+      }
+    #endif /* ESP8266_MULTIPERSO */
     if (1 == SthToConnect) {
       WifiCliConnectState = WifiState_JUSTCONNECTED; // give a loop run chance for other tasks
     }
@@ -1531,7 +1580,11 @@ int SthToConnect = 0;
 
 #ifdef WITH_WIFI
 int WifiSrvConnected() {
-  return (0 != WiFi.softAPIP());
+  #ifdef WITH_WIFISRV
+    return (0 != (int)WiFi.softAPIP());
+  #else /* WITH_WIFISRV */
+    return( false);
+  #endif /* WITH_WIFISRV */
 }
 #endif /* WITH_WIFI */
 
@@ -1577,19 +1630,54 @@ void StateDumpBld_1( String& LocStr) {
 
 #ifdef WITH_OSC
   LocStr += "-Osc";
+  LocStr += ", cmd:";
+  LocStr += OscAddrMine;
+  LocStr += " S:";
+  LocStr += OscAddrS;
+  LocStr += " ";
+  LocStr += OscAddrI1;
+  LocStr += " ";
+  LocStr += OscAddrS2;
+  LocStr += " ";
+  LocStr += OscAddrI2;
+  LocStr += " ";
+  
+  LocStr += "\n";
 
 #ifdef WITH_WIFICLIENT
-  LocStr += ", CliState:";
+  LocStr += "  , CliState:";
   LocStr += CSTRI( OscWifiCliState);
-#endif /* WITH_WIFICLIENT */
-  LocStr += ", SrvState:";
-  LocStr += CSTRI( OscWifiSrvState);
-
-  LocStr += ", MyId:";
-  LocStr += OscAddrMine;
+  LocStr += " -";
+  DumpIp (LocStr, WiFi.localIP());
+  LocStr += " -";
+  DumpIp (LocStr, OscUdpCli.remoteIP());
+  LocStr += " -";
+  DumpIp (LocStr, OscUdpCli.destinationIP());
+  LocStr += ":";
+  LocStr += CSTRI( OSC_PORT);
   LocStr += "\n";
+#endif /* WITH_WIFICLIENT */
+#ifdef WITH_WIFISRV
+  LocStr += "  , SrvState:";
+  LocStr += CSTRI( OscWifiSrvState);
+  LocStr += " -";
+  DumpIp (LocStr, WiFi.softAPIP());
+  LocStr += " -";
+  DumpIp (LocStr, OscUdpSrv.remoteIP());
+  LocStr += " -";
+  DumpIp (LocStr, OscUdpSrv.destinationIP());
+  LocStr += ":";
+  LocStr += CSTRI( OSC_PORT);
+  LocStr += "\n";
+#endif /* WITH_WIFISRV */
   LocStr += "rem : received command starting with '_' will be sent to the command line\n";
 #endif /* WITH_OSC */
+
+#ifdef WITH_RELAY_BLINK
+  LocStr += "RelayBlink:";
+  LocStr += CSTRI(WITH_RELAY_BLINK);
+  LocStr += "\n";
+#endif WITH_RELAY_BLINK
 
   LocStr += "-Eprom reqs:";
   LocStr += EPROM_REQ_SIZE;
@@ -1607,13 +1695,12 @@ void StateDumpBld_2( String& LocStr) {
     LocStr  +=  "  , CommandUs:" + CSTRI( pMotor->MinCommandUs) + "us\n";
     LocStr  +=  "  , Mode:" + CSTRI( pMotor->DriverMode) ;
       switch( pMotor->DriverMode) {
-        case MOTOR_UNDEF : LocStr  +=  " , undefined";break;
+        case MOTOR_UNDEF : LocStr += " , undefined";break;
         case MODOR_DC_LR : LocStr += " , DC_LR, A:" + CSTRI( pMotor->Pin1) + ", B:" + CSTRI( pMotor->Pin2); break;
-        case MOTOR_PWM   : LocStr  +=   " , PWM" ; break;
-        case MOTOR_PWM2  : LocStr  +=   " , PWM2"; break;
+        case MOTOR_PWM   : LocStr += " , PWM Puls:"      + CSTRI( pMotor->Pin1) ; break;
+        case MOTOR_PWM2  : LocStr += " , PWM2 Puls:"     + CSTRI( pMotor->Pin1); break;
         case MOTOR_STEPPER :   
-           LocStr += " , Stepper PulsP:" + CSTRI( pMotor->Pin2);
-           LocStr += ", DirP:" + CSTRI( pMotor->Pin1);
+           LocStr += " , Stepper PulsP:" + CSTRI( pMotor->Pin2) + ", DirP:" + CSTRI( pMotor->Pin1);
 
         break;
         #ifdef WITH_SERVO
@@ -1640,11 +1727,6 @@ void StateDumpBld_2( String& LocStr) {
       }
   }
 #endif /* WITH_MOTOR */
-
-#ifdef WITH_DCMOTOR
-  
-  LocStr += "\n";
-#endif /* WITH_DCMOTOR */
 
 #ifdef WITH_SERVO
   LocStr += "-Servo pins:{ ";
@@ -1686,12 +1768,11 @@ void StateDumpBld_2( String& LocStr) {
   LocStr  +=  "\n";
 #endif /* WITH_ADC */
 
-#ifdef STOPPER_MIN_PIN
-  LocStr  +=  "-StopMin :" + CSTRI( digitalRead( STOPPER_MIN_PIN)) + ", pin:" + CSTRI(STOPPER_MIN_PIN) +"\n";
-#endif /* STOPPER_MIN_PIN */
-  #ifdef STOPPER_MAX_PIN
-    LocStr  +=  "-StopMax :" + CSTRI( digitalRead( STOPPER_MAX_PIN)) + ", pin:" + CSTRI(STOPPER_MAX_PIN) +"\n";
-  #endif /* STOPPER_MAX_PIN */
+#ifdef WITH_STOPPERS
+  LocStr  +=  "-Stop presents" +"\n";
+  // LocStr  +=  "-StopMin :" + CSTRI( digitalRead( STOPPER_MIN_PIN)) + ", pin:" + CSTRI(STOPPER_MIN_PIN) +"\n";
+  // LocStr  +=  "-StopMax :" + CSTRI( digitalRead( STOPPER_MAX_PIN)) + ", pin:" + CSTRI(STOPPER_MAX_PIN) +"\n";
+#endif /* WITH_STOPPERS_A */
 
   #if defined( WITH_SCREEN_SSD1306)
       LocStr  +=  "-Screen SSD1306 :" + CSTRI( ScreenParams[0]) + ", Pin :" + CSTRI( ScreenParams[1]) + " " + CSTRI( ScreenParams[2]) + "\n";
@@ -1744,12 +1825,15 @@ void MyPinmode( uint8_t Pin, int Mode) {
   }
 #endif /* #ifdef ESP8266 */
 
-  if ((Pin < 20) && (PinModes[Pin] != Mode)) {
-    pinMode( Pin, Mode);
-    PinModes[Pin] = Mode;
-  } else {
-    dbgprintf( 1, "Warn, duplicated init %i \n", Pin);
-    pinMode( Pin, Mode);
+  if ((Pin >= 0) && (Pin < 20))
+  {
+    if ((PinModes[Pin] != Mode)) {
+      pinMode( Pin, Mode);
+      PinModes[Pin] = Mode;
+    } else {
+      dbgprintf( 1, "Warn, duplicated init %i \n", Pin);
+      pinMode( Pin, Mode);
+    }
   }
 }
 
@@ -2224,6 +2308,74 @@ void OscMine( OSCMESSAGE &Msg) {
   }
 }
 
+// retrieve command with 3 numbers, each is a position for one motor
+void OscS( OSCMESSAGE &Msg) {
+  //get 1st argument(int32)
+  int M1 = -1;
+  int M2 = -1;
+  int M3 = -1;
+
+  // github.com/CNMAT/OSC/blob/master/API.md
+  M1 = Msg.getFloat(0);
+  if (-1 == M1) {
+    M1 = Msg.getInt(0);    
+  }
+  M2 = Msg.getFloat(1);
+  if (-1 == M2) {
+    M2 = Msg.getInt(1);    
+  }
+  M3 = Msg.getFloat(2);
+  if (-1 == M3) {
+    M3 = Msg.getInt(2);    
+  }
+
+  // dbgprintf( 3, " OscS  %8ims -a ", DiffTime( OscLastSendMs, millis()));
+  // HI_GIRL : here your specific commands from OSC
+  //dbgprintf( 3, " Args %i %i", M1, M2);
+  //dbgprintf( 3, " %i-\n", M3);
+  
+  if (M1 >= 0)
+    MotorSet( 0, M1);
+  if (M2 >= 0)
+    MotorSet( 1, M2);
+  if (M3 >= 0)
+    MotorSet( 2, M3);
+}
+
+// retrieve a command with position for the second motor (some osc senders do not sends motor positions in one compact command)
+void OscS2( OSCMESSAGE &Msg) {
+  //get 1st argument(int32)
+  unsigned int M1;
+  unsigned int M2;
+  unsigned int M3;
+
+  // github.com/CNMAT/OSC/blob/master/API.md
+  M1 = Msg.getFloat(0);
+  if (-1 == M1) {
+    M1 = Msg.getInt(0);    
+  }
+
+  dbgprintf( 3, " OscS2 %8ims -a ", DiffTime( OscLastSendMs, millis()));
+    // HI_GIRL : here your specific commands from OSC
+    dbgprintf( 3, " Args %i %i", M1, M2);
+    dbgprintf( 3, " %i-\n", M3);
+  MotorSet( 1, M1);
+}
+
+void OscI1( OSCMESSAGE &Msg) {
+  dbgprintf( 3, " OscI1 %8ims -a \n", DiffTime( OscLastSendMs, millis()));
+  MotorHome( 0, true);
+}
+
+void OscI2( OSCMESSAGE &Msg) {
+  dbgprintf( 3, " OscI2 %8ims -a \n", DiffTime( OscLastSendMs, millis()));
+  MotorHome( 1, true);
+}
+
+void OscTest( OSCMESSAGE &Msg) {
+  dbgprintf( 2, " OscTest %8ims\n", DiffTime( OscLastSendMs, millis()));
+}
+
 // build and send frame
 void OscSendCmdAct( int CmdNum) {
   OSCMessage Msg( OscAddr);
@@ -2265,6 +2417,10 @@ void OscSendCmdAct( int CmdNum) {
       strncpy( Cmd, (char*)DbgStr, OSC_CMD_LEN);
       ReadyToSend = 1;
       break;
+    case 5:
+      strncpy( Cmd, (char*)"123L", OSC_CMD_LEN);
+      ReadyToSend = 1;
+      break;
   }
   if (ReadyToSend) {
     Chf = 0;
@@ -2294,29 +2450,32 @@ void OscSendCmdAct( int CmdNum) {
         }
       }
     }
-    dbgprintf( 3, "OscSendCmd %s \n", Cmd);
+    //dbgprintf( 3, "OscSendCmd %s \n", Cmd);
     Msg.add( Cmd);
     // to the wifi we connected to
-    if (0 != OscWifiCliState) {
+    if (WifiState_STABLE == OscWifiCliState) {
       #ifdef ESP8266
-        Res = OscUdpCli.beginPacketMulticast( WiFi.localIP() | 0xFF000000, OSC_PORT, WiFi.localIP());// 0xFF000000 beware of the endians
+        Res = OscUdpCli.beginPacketMulticast( OscUdpIp(WiFi.localIP()), OSC_PORT, WiFi.localIP());// 0xFF000000 beware of the endians
       #else
-        Res = OscUdpCli.beginPacket( WiFi.localIP() | 0xFF000000, OSC_PORT);// TODO_HERE : test
+        Res = OscUdpCli.beginPacket( OscUdpIp(WiFi.localIP()), OSC_PORT);// TODO_HERE : test
       #endif
       Msg.send( OscUdpCli);
       Res = OscUdpCli.endPacket();// Finish off this packet and send it
+      dbgprintf( 3, "OscSendCmd %s to connected wifi\n", Cmd);
     }
     // to me
     Msg.dispatch( OscAddrMine, OscMine);
     // to the generated wifi
-    if (0 != OscWifiSrvState) {
+    if (WifiState_OFF != OscWifiSrvState) {
+
       #ifdef ESP8266
-        Res = OscUdpSrv.beginPacketMulticast( WiFi.softAPIP() | 0xFF000000, OSC_PORT, WiFi.softAPIP());// 0xFF000000 beware of the endians
+        Res = OscUdpSrv.beginPacketMulticast( OscUdpIp( WiFi.softAPIP()), OSC_PORT, WiFi.softAPIP());// 0xFF000000 beware of the endians
       #else
-        Res = OscUdpCli.beginPacket( WiFi.softAPIP() | 0xFF000000, OSC_PORT);
+        Res = OscUdpCli.beginPacket( OscUdpIp( WiFi.softAPIP()), OSC_PORT);
       #endif
       Msg.send( OscUdpSrv);
       Res = OscUdpSrv.endPacket();// Finish off this packet and send it
+      dbgprintf( 3, "OscSendCmd %s to generated wifi\n", Cmd);
     }
 
     Msg.empty();
@@ -2370,14 +2529,26 @@ void OscPlaytrack( OSCMESSAGE &Msg, int Offset) {
 }
 
 void OscInit() {
+  OscRegulMs = millis();
+  OscLastMs = millis();
+}
+
+bool OscDispatch( OSCMESSAGE* pOSCMessage) {
 }
 
 void OscLoop() {
-  OSCMESSAGE bundle;
+  OSCMESSAGE OscBundle;
   int size;
   int Res;
   uint8_t incomingByte;
+  int NodeNum = NodeGet();
 
+  // send regularly
+  if ( (DiffTime( OscRegulMs, millis()) > 200)&& NodeNum>50) {
+    OscRegulMs = millis();
+    OscSendCmdAct( 5);
+  }
+  
   // resend to patch udp reliability
   if ((OscLastCount > 0) && (DiffTime( OscLastMs, millis()) > 200)) {
     OscLastCount --;
@@ -2387,72 +2558,109 @@ void OscLoop() {
 
   // catch orders
 #ifdef WITH_WIFICLIENT
-  if ((0 == OscWifiCliState) && WifiCliConnected()) {
-    Res = OscUdpCli.begin(OSC_PORT);
+  if (WifiState_WAITRECO == OscWifiCliState && DiffTime( OscWifiCliRecoMs, millis()) > 500) {
+    OscWifiCliState = WifiState_OFF;
+  }
+  if ((WifiState_OFF == OscWifiCliState) && WifiCliConnected() && (0 != (uint32_t)WiFi.localIP())) { // begin listening on wifi client side
+    //#ifdef ESP8266
+    //  Res = OscUdpCli.beginMulticast( WiFi.localIP(), OscUdpIp( WiFi.localIP()), OSC_PORT);
+    //#else
+      Res = OscUdpCli.begin(OSC_PORT);
+    //#endif
     if (1 == Res) { // 1 if successful
-      OscWifiCliState = 1;
+      if (WifiState_STABLE != OscWifiCliState) {
+        dbgprintf( 2, "OscUdpCli Ok\n");
+        OscWifiCliState = WifiState_STABLE;
+      }
     } else if (0 == Res) {
-      dbgprintf( 2, "no sock availlable %i\n", Res);
-      OscWifiCliState = 1;// but seems works anyway
+      dbgprintf( 2, "OscUdpCli no sock availlable 0 for 0x%08x\n", OscUdpIp( WiFi.localIP()));
+      dbgprintf( 2, "on 0x%08x\n", (uint32_t)WiFi.localIP());
+      OscWifiCliState = WifiState_WAITRECO;// but seems works anyway
+      OscWifiCliRecoMs = millis();
     } else {
       dbgprintf( 2, "OscUdpCli err %i\n", Res);
     }
-  } else if ((1 == OscWifiCliState) && !WifiCliConnected()) {
+  } else if ((WifiState_STABLE == OscWifiCliState) && !WifiCliConnected()) {
     // TODO_LATER : soupcons que ca coupe debug  OscUdpCli.stop();
-    OscWifiCliState = 0;
+    OscWifiCliState = WifiState_OFF;
+    dbgprintf( 2, "OscUdpCli deco\n", Res);
   }
 
-  if (0 != OscWifiCliState) {
+  if (WifiState_STABLE == OscWifiCliState) {
+    // dbgprintf( 2,"OscUdpCli wait\n"); // usefull for dev but flooding
     size = OscUdpCli.parsePacket();
     if (size > 0) {
-      // dbgprintf( 2,"OscUdpCli got %i-", size);
+      // dbgprintf( 2,"OscUdpCli got %i-\n", size);
       while (size--) {
         incomingByte = OscUdpCli.read();
         //dbgprintf( 2,"%c", incomingByte);
-        bundle.fill( incomingByte);
+        OscBundle.fill( incomingByte);
       }
       //dbgprintf( 2,"\n");
-      if (!bundle.hasError()) {
-        //dbgprintf( 2,"OscUdpCli bundle rdy");
-        //bundle.route("/*", OscPlaytrack);
-        bundle.dispatch( OscAddrMine, OscMine);
+      if (!OscBundle.hasError()) {
+        //dbgprintf( 2,"OscUdpCli OscBundle rdy");
+        //OscBundle.route("/*", OscPlaytrack);
+        OscBundle.dispatch( "/test", OscTest);
+        OscBundle.dispatch( OscAddrS, OscS); // like /BEN_049_S1
+        OscBundle.dispatch( OscAddrI1, OscI1); // like /BEN_049_I1
+        OscBundle.dispatch( OscAddrS2, OscS2); // like /BEN_049_S2
+        OscBundle.dispatch( OscAddrI2, OscI2); // like /BEN_049_I2
+        OscBundle.dispatch( OscAddrMine, OscMine);
       } else {
-        OscError = bundle.getError();
+        OscError = OscBundle.getError();
         dbgprintf( 2, "OscUdpCli err %i", OscError);
       }
     }
   }
 #endif /* WITH_WIFICLIENT */
 
-#ifdef WITH_WIFI
-  if ((0 == OscWifiSrvState) && ( WifiSrvConnected())) {
-    Res = OscUdpSrv.begin(OSC_PORT);
-    // dbgprintf( 2,"OscUdpSrv begin %i\n", Res);
-    if (1 == Res) { // 1 if successful
+#ifdef WITH_WIFISRV
+  if ((0 != SrvSSID[0]) && (0 == OscWifiSrvState) && WifiSrvConnected() && (0 != (uint32_t)WiFi.softAPIP())) { // begin listen on wifi server side (generated wifi)
+    #ifdef ESP8266
+      Res = OscUdpSrv.beginMulticast( WiFi.softAPIP(), OscUdpIp( WiFi.softAPIP()), OSC_PORT);// TODO_HERE a marche pu
+    #else
+      Res = OscUdpSrv.begin(OSC_PORT); // TODO_HERE : how is there an interface diff with OscUdpCli init up above
+    #endif
+    //dbgprintf( 2,"OscUdpSrv begin %i\n", Res);
+    if (1 == Res && OscWifiSrvState != 1) { // 1 if successful
       OscWifiSrvState = 1;
+      dbgprintf( 2,"OscUdpSrv connected :%i\n", OSC_PORT);
     }
   } else if ((1 == OscWifiSrvState) && !WifiSrvConnected()) {
-    // TODO_LATER : soupcons que ca cupe debug OscUdpSrv.stop();
+    // TODO_LATER : soupcons que ca coupe debug OscUdpSrv.stop();
     OscWifiSrvState = 0;
   }
 
   if (0 != OscWifiSrvState) {
     size = OscUdpSrv.parsePacket();
     if (size > 0) {
-      // dbgprintf( 2,"OscUdpSrv got %i-", size);
+      // dbgprintf( 2,"OscUdpSrv got %i-\n", size); // osc debug tells if there is a udp touch
       while (size--) {
         incomingByte = OscUdpSrv.read();
         //dbgprintf( 2,"%c", incomingByte);
-        bundle.fill( incomingByte);
+        OscBundle.fill( incomingByte);
       }
+      OscDispatch( &OscBundle);
       //dbgprintf( 2,"\n");
-      if (!bundle.hasError()) {
-        //dbgprintf( 2,"OscSrvCli bundle rdy");
-        //bundle.route("/*", OscPlaytrack);
-        bundle.dispatch( OscAddrMine, OscMine);
+      if (!OscBundle.hasError()) {
+        bool bGot = false;
+        // dbgprintf( 2,"OscUdpSrv OscBundle rdy\n");
+        //OscBundle.route("/*", OscPlaytrack);
+        bGot |= OscBundle.dispatch( "/test", OscTest);
+        bGot |= OscBundle.dispatch( OscAddrS, OscS); // like /BEN_049_S1
+        bGot |= OscBundle.dispatch( OscAddrI1, OscI1); // like /BEN_049_I1
+        bGot |= OscBundle.dispatch( OscAddrS2, OscS2); // like /BEN_049_S2
+        bGot |= OscBundle.dispatch( OscAddrI2, OscI2); // like /BEN_049_I2
+        bGot |= OscBundle.dispatch( OscAddrMine, OscMine);
+        if (!bGot) {
+          //int Cnt = 0;
+          dbgprintf( 2,"OscUdpSrv OscBundle not dispatched\n");
+          //while(Cnt < size)
+          //  dbgprintf( 2,"%c", incomingByte);
+        }
       } else {
-        OscError = bundle.getError();
-        dbgprintf( 2, "OscSrvCli err %i", OscError);
+        OscError = OscBundle.getError();
+        dbgprintf( 2, "OscUdpSrv err %i", OscError);
       }
     }
   }
@@ -2480,7 +2688,7 @@ void FctRun( uint8_t* Str, uint32_t Num) {
   Num = Num / 100;
 
   switch ( FctId) {
-    case 1 :
+    case 1 : // 01F
       dbgprintf( 2, " FctRun01\n");
       GarageDoorOpen();
       break;
@@ -2494,6 +2702,14 @@ void FctRun( uint8_t* Str, uint32_t Num) {
       break;
     #endif /* WITH_WS2812 */
     // HI_GIRLS : here everything specific to your project
+  #ifdef MODULE_RADEAU
+    case 3 : // 03F inject OSC push\n";
+      OscSendCmdAct( 1);
+      break; 
+    case 4 : // 04F inject OSC release\n";
+      OscSendCmdAct( 2);
+      break;
+  #endif /* MODULE_RADEAU */
     default :
       dbgprintf( 2, "FctRun : none for %i\n", FctId);
       break;
@@ -2698,6 +2914,7 @@ void CmdLineParse( unsigned char Ch) {
         if (uITmp < MOTOR_NB) {
           Motor_t* pMotor = &(MotorArray[uITmp]);
           pr_uint32_write( pMotor->WishDTms, DbgNum % 10000);
+          EprSet = 1;
         }
         break;
 #endif /* WITH_MOTOR */
@@ -2799,14 +3016,13 @@ void CmdLineParse( unsigned char Ch) {
               case MOTOR_SERVO :
             #endif /* WITH_SERVO */
               pr_int32_write( pMotor->WishP2, DbgSign*(DbgNum % 10000));
-            break;
+              if (pMotor->Order < 0) // just booted
+                pMotor->Order = 0;
+
+              break;
             case MOTOR_STEPPER:
             case MODOR_DC_LR:
-              if( 9999 == DbgNum % 10000) {
-                // TODO_HERE : Homing
-                pMotor->HomingOn = !pMotor->HomingOn;
-                dbgprintf( 2, "Warn - TODO_HERE Homing\n");
-              } else {
+              {
                 if (pMotor->Order < 0) { // don't know where we are after boot
                   pMotor->WishDec = DbgSign*(DbgNum % 10000);
                   pMotor->Order = 0;
@@ -3196,14 +3412,6 @@ void StepperSetup( ) {
     if (MOTOR_UNDEF == pMotor->DriverMode) {
       pMotor->DriverMode = MOTOR_STEPPER;
     }
-
-    #ifdef STOPPER_MIN_PIN
-       MyPinmode( STOPPER_MIN_PIN, INPUT_PULLUP);
-    #endif /* STOPPER_MIN_PIN */
-    #ifdef STOPPER_MAX_PIN
-      MyPinmode( STOPPER_MAX_PIN, INPUT_PULLUP);
-    #endif /* STOPPER_MAX_PIN */
-
   }
 }
 
@@ -3219,21 +3427,6 @@ uint32_t StepperLoop( Motor_t* pMotor, uint32_t ExpectedPos) {
   Dist = Vectorize( StepperPos, ExpectedPos);
   // dbgprintf( 2, " Pos:%5u, Expect:%5u,", StepperPos, ExpectedPos);
   // dbgprintf( 2, " D:%5i\n", Dist);
-
-#ifdef STOPPER_MIN_PIN
-      if ((Dist < 0) && (HIGH != digitalRead( STOPPER_MIN_PIN))) {
-        // nop
-        //dbgprintf(2, "Min nop\n");
-        return ( StepperPos);
-      }
-#endif /* STOPPER_MIN_PIN */
-#ifdef STOPPER_MAX_PIN
-      if ((Dist > 0) && (HIGH != digitalRead( STOPPER_MAX_PIN))) {
-        // nop
-        //dbgprintf(2, "Max nop\n");
-        return ( StepperPos);
-      }
-#endif /* STOPPER_MAX_PIN */
 
   if (Dist < 0) {
     if (1 == pMotor->StepperD) {
@@ -3257,14 +3450,6 @@ uint32_t StepperLoop( Motor_t* pMotor, uint32_t ExpectedPos) {
       // puls <- StepperP
       digitalWrite( PulsPin, pMotor->StepperP);
     }
-  } else {  // expected pos
-/*#ifdef STOPPER_MIN_PIN
-    // commented because not decided yet if it's about app specific or this generic to re-align
-    if (LOW == digitalRead( STOPPER_MIN_PIN)) {
-      StepperPos = 0;
-    }
-#endif*/ /* STOPPER_MIN_PIN */
-
   }
   pMotor->LastPos = StepperPos;
 
@@ -3362,6 +3547,12 @@ void DcMotorSetup() {
 
     MyPinmode( pMotor->Pin1, OUTPUT);
     MyPinmode( pMotor->Pin2, OUTPUT);
+
+    pMotor->StepperD=LOW;
+    pMotor->StepperP=LOW;
+
+    digitalWrite( pMotor->Pin1, LOW);
+    digitalWrite( pMotor->Pin2, LOW);
 
     if (MOTOR_UNDEF == pMotor->DriverMode) {
       pMotor->DriverMode = MODOR_DC_LR;
@@ -3547,7 +3738,7 @@ void MotorDcPwm( uint8_t Idx, uint32_t ExpectedPos) {
        }
      }
    }
-   // dbgprintf( 2, "MotorDcPwm0 %i %i\n", pMotor->LastPos, ExpectedPos);
+   dbgprintf( 4, "MotorDcPwm0 %i %i\n", pMotor->LastPos, ExpectedPos);
    
   #endif
  
@@ -3576,15 +3767,26 @@ void MotorDcPwm3( uint8_t Idx, uint32_t ExpectedPos) {
 
   pMotor->LastSlice = (pMotor->LastSlice*U+Dt)/(U+1);
   
+  dbgprintf( 4, "MotorDcPwm3 %i %i\n", pMotor->LastPos, pMotor->InstVal);
 }
 
 void MotorDcPwm2( uint8_t Idx, uint32_t ExpectedPos) {
   Motor_t* pMotor;
   uint32_t Rand;
-  uint32_t Dt;
-  
+  //uint32_t Dt;
+
+// pin1      uint8_t StepperD; // current dir
+//    uint8_t StepperP; // current Pulse (up or down)
+
   pMotor = &(MotorArray[Idx]);
 
+  if (pMotor->StepperP != LOW)
+  {
+    digitalWrite( pMotor->Pin2, LOW);
+    pMotor->StepperP = LOW;
+  }
+
+/*
   Rand = random(9999);
   
   if (0 == ExpectedPos) {
@@ -3601,16 +3803,39 @@ void MotorDcPwm2( uint8_t Idx, uint32_t ExpectedPos) {
 
   if (pMotor->LastPos != pMotor->InstVal) {
     if (pMotor->InstVal > 0){
-      digitalWrite( pMotor->Pin1, HIGH);
+      if (pMotor->StepperD != HIGH)
+      {
+        digitalWrite( pMotor->Pin1, HIGH);
+        pMotor->StepperD = HIGH;
+      }
     } else {
-      digitalWrite( pMotor->Pin1, LOW);
+      if (pMotor->StepperD != LOW)
+      {
+        digitalWrite( pMotor->Pin1, LOW);
+        pMotor->StepperD = LOW;
+      }
     }
     pMotor->LastPos = pMotor->InstVal;
   }
+  dbgprintf( 4, "MotorDcPwm2 %i %i\n", ExpectedPos, pMotor->InstVal);  
+*/
+  Rand = ExpectedPos * 1023 / 9999;
+  /* TODO_HERE : ramp
+  if (pMotor->StepperD > Rand) {
+    Rand = pMotor->StepperD-1;
+  }
+  else if (pMotor->StepperD < Rand) {
+    Rand = pMotor->StepperD+1;
+  }*/
+  if (pMotor->StepperD != Rand) {
+    analogWrite( pMotor->Pin1, Rand);
+    pMotor->StepperD = Rand;
+    pMotor->InstVal = ExpectedPos;
+  }
 
-  //dbgprintf( 2, "MotorDcPwm2 %i %i\n", ExpectedPos, pMotor->InstVal);
-  //dbgprintf( 2, "%i\n", pMotor->InstVal);
-  
+  pMotor->LastPos = pMotor->InstVal;
+  dbgprintf( 4, "MotorDcPwm2 %i\n", ExpectedPos);  
+
 }
 #endif /* WITH_DCMOTOR */
 
@@ -3687,6 +3912,7 @@ void GraycodeInSetup() {
 #ifdef WITH_WIFI // ------------------------------------
 
 void  WifiDocState( String& LocStr) {
+  #ifdef WITH_WIFISRV
   LocStr += "-Wifi as server:";
   if (0 != SrvSSID[0]) {
     if (WifiSrvConnected()) {
@@ -3714,6 +3940,7 @@ void  WifiDocState( String& LocStr) {
   } else {
     LocStr += " no SSID\n"; // check IOTMUTUAL
   }
+  #endif /* WITH_WIFISRV */
 }
 
 int WifiInit( void) {
@@ -3724,32 +3951,6 @@ int WifiInit( void) {
   int NodeNum = NodeGet();
 
   strcpy( SrvPWD, BEN_PWD);
-  tpw = RssiCorrectionGet();
-  if ((tpw >= 128 - MAX_TPW / 2) && (tpw <= 128 + MAX_TPW / 2)) {
-    iTmp = map(RssiCorrectionGet(), 128 - MAX_TPW / 2, 128 + MAX_TPW / 2, 0, 82);
-    tpw = 128;
-  } else if (tpw > 128) {
-    iTmp = MAX_TPW;
-    tpw -= MAX_TPW / 2 - 1;
-  } else {
-    iTmp = 0;
-    tpw += MAX_TPW / 2 + 1;
-  }
-
-#ifdef ESP8266
-  // TODO_HERE : ESP32
-  system_phy_set_max_tpw( iTmp); // uint8 max_tpw 0..82
-  dbgprintf( 3, "tpw set %i pwr", iTmp);
-  dbgprintf( 3, ", %i by pwr\r\n", iTmp - MAX_TPW / 2);
-#endif /* ESP8266 */
-
-  NbNet = WiFi.scanNetworks( true);
-  dbgprintf( 2, "WifiInit Net1 %i\r\n", NbNet);
-
-  RssiCls();
-
-  // Set WiFi to station mode and disconnect from an AP if it was previously connected
-  WiFi.mode(WIFI_AP_STA);
 
   SrvSSID[0] = 0;
   switch (RoleGet()) {
@@ -3778,18 +3979,13 @@ int WifiInit( void) {
       break;
     case ROLE_IOTS :
     case ROLE_IOTM :
-      #ifdef WITH_IOTMUTUAL
-        NodeNum = NodeGet();
         memcpy( SrvSSID, BEN_TAG, 4);
         SrvSSID[4] = '0' + (NodeNum / 100) % 10;
         SrvSSID[5] = '0' + (NodeNum / 10) % 10;
         SrvSSID[6] = '0' + (NodeNum    ) % 10;
         SrvSSID[7] = 0;
-      #endif /* WITH_IOTMUTUAL */
       break;
     case ROLE_PASSENGER :
-      NodeNum = NodeGet();
-
       memcpy( SrvSSID, BEN_TAG, 4);
       SrvSSID[4] = '0' + (NodeNum / 100) % 10;
       SrvSSID[5] = '0' + (NodeNum / 10) % 10;
@@ -3807,6 +4003,44 @@ int WifiInit( void) {
       dbgprintf( 3, "tpw set %i by letter\r\n", tpw - 128);
       break;
   }
+
+  #ifdef WITH_WIFISRV
+    tpw = RssiCorrectionGet();
+    if ((tpw >= 128 - MAX_TPW / 2) && (tpw <= 128 + MAX_TPW / 2)) {
+      iTmp = map(RssiCorrectionGet(), 128 - MAX_TPW / 2, 128 + MAX_TPW / 2, 0, 82);
+      tpw = 128;
+    } else if (tpw > 128) {
+      iTmp = MAX_TPW;
+      tpw -= MAX_TPW / 2 - 1;
+    } else {
+      iTmp = 0;
+      tpw += MAX_TPW / 2 + 1;
+    }
+
+    #ifdef ESP8266
+      // TODO_HERE : ESP32
+      system_phy_set_max_tpw( iTmp); // uint8 max_tpw 0..82
+      dbgprintf( 3, "tpw set %i pwr", iTmp);
+      dbgprintf( 3, ", %i by pwr\r\n", iTmp - MAX_TPW / 2);
+    #endif /* ESP8266 */
+
+    NbNet = WiFi.scanNetworks( true);
+    dbgprintf( 2, "WifiInit - Net1 %i\r\n", NbNet);
+
+    RssiCls();
+  #endif /* WITH_WIFISRV */
+
+  // Set WiFi to station mode and disconnect from an AP if it was previously connected
+  #if defined( WITH_WIFISRV) && defined(WITH_WIFICLIENT)
+    WiFi.mode(WIFI_AP_STA);
+  #elif defined(WITH_WIFISRV)
+    WiFi.mode(WIFI_AP);
+  #elif defined(WITH_WIFICLIENT)
+    WiFi.mode(WIFI_STA);
+  #else
+    WiFi.mode(WIFI_OFF);
+  #endif /* WITH_WIFISRV */
+
   if (0 != SrvSSID[0]) {
     #ifdef WITH_WIFICLIENT
       if (0 == memcmp( BEN_TAG, CliSSID, 4)) {
@@ -3819,8 +4053,11 @@ int WifiInit( void) {
       dbgprintf( 2, "Try to serve 192.168.4.1\n", SrvSSID); // default
     #endif /* WITH_WIFICLIENT */
 
-    WiFi.softAP( SrvSSID, SrvPWD);
-    dbgprintf( 3, "Wifi AP %s started\n", SrvSSID);
+    #ifdef WITH_WIFISRV
+      // start the access point (like router)
+      WiFi.softAP( SrvSSID, SrvPWD);
+      dbgprintf( 3, "Wifi AP %s started\n", SrvSSID);
+    #endif /* WITH_WIFISRV */
   }
 
   #ifdef WITH_OSC
@@ -3828,6 +4065,19 @@ int WifiInit( void) {
     OscAddrMine[0] = '/';
     memcpy( OscAddrMine + 1, SrvSSID, min( OSC_CMD_LEN - 1, WIFI_IDLEN));
     OscAddrMine[ OSC_CMD_LEN - 1] = 0;
+    
+    memset( OscAddrS, 0, OSC_ADDR_LEN);
+    snprintf( OscAddrS, OSC_ADDR_LEN, "/%s_S", SrvSSID);
+    OscAddrS[ OSC_ADDR_LEN - 1] = 0;
+    memset( OscAddrI1, 0, OSC_ADDR_LEN);
+    snprintf( OscAddrI1, OSC_ADDR_LEN, "/%s_I1", SrvSSID);
+    OscAddrI1[ OSC_ADDR_LEN - 1] = 0;
+    memset( OscAddrS2, 0, OSC_ADDR_LEN);
+    snprintf( OscAddrS2, OSC_ADDR_LEN, "/%s_S2", SrvSSID);
+    OscAddrS2[ OSC_ADDR_LEN - 1] = 0;
+    memset( OscAddrI2, 0, OSC_ADDR_LEN);
+    snprintf( OscAddrI2, OSC_ADDR_LEN, "/%s_I2", SrvSSID);
+    OscAddrI2[ OSC_ADDR_LEN - 1] = 0;
   #endif /* WITH_OSC */
 
   return ( 0);
@@ -4407,7 +4657,11 @@ void MotorSetup() {
 
   for (Idx = 0; Idx < MOTOR_NB; Idx++) {
     pMotor = &(MotorArray[Idx]);
-    pr_uint32_write( pMotor->WishDTms, 100);
+    #if defined( MODULE_RADEAU)
+    pr_uint32_write( pMotor->WishDTms, 1000);// TODO_HERE : en param sauvegardé
+    #else
+    pr_uint32_write( pMotor->WishDTms, 50);// TODO_HERE : en param sauvegardé
+    #endif
     pMotor->Order = -1;
     switch (Idx) {
       case 0 : UserMode = EprMotor0ModeGet(); break;
@@ -4440,11 +4694,6 @@ void MotorSetup() {
     StepperInSetup();
   #endif /* STEPPER_IN_PULSE_PIN */
 
-  #ifdef WITH_RELAY_BLINK
-    MyPinmode( WITH_RELAY_BLINK, OUTPUT);
-    digitalWrite( WITH_RELAY_BLINK, LOW);
-  #endif /* WITH_RELAY_BLINK */
-
   MaxXGet();
   SpeedXGet();
   VectX = SpeedX;
@@ -4452,6 +4701,108 @@ void MotorSetup() {
   SpeedYGet();
   VectY = SpeedY;
 
+}
+
+/* Description: Set motor home(ing)
+ * St- 1 start homing, 0 caller decided it is done
+ */
+void MotorHome( int MotNum, int St) {
+  Motor_t* pMotor;
+  
+  dbgprintf( 2, "MotorHome( %i, %i)\n", MotNum, St);
+  if ((MotNum >= 0) && (MotNum < MOTOR_NB)) {
+
+    pMotor = &(MotorArray[MotNum]);
+    if (St) {
+      pMotor->HomingOn = 1;
+      pMotor->HomingMs = millis();
+    
+      pr_uint32_write( (pMotor->Pos), 6000);
+      MotorSet( MotNum, 0);
+    } else { // quit homing mode
+      pMotor->HomingOn = 0;
+      pMotor->HomingMs = millis();
+    
+      pr_uint32_write( pMotor->Pos, 0);
+      MotorSet( MotNum, 0);
+    }
+  }
+}
+
+void MotorSet( int MotNum, int MotVal) {
+  
+  // dbgprintf( 2, "MotorSet( %i, %i)\n", MotNum, MotVal);
+
+  if ((MotNum >= 0) && (MotNum < MOTOR_NB)) {
+    Motor_t* pMotor = &(MotorArray[MotNum]);
+
+    //dbgprintf( 2, "MotorSet( %i, %i) %i\n", MotNum, MotVal, pMotor->DriverMode);
+    switch( pMotor->DriverMode) {
+      default :
+      case MOTOR_PWM :
+      case MOTOR_PWM2 :
+      #ifdef WITH_SERVO
+        case MOTOR_SERVO :
+      #endif /* WITH_SERVO */
+        pr_int32_write( pMotor->WishP2, MotVal);
+        if (pMotor->Order < 0) // just booted
+          pMotor->Order = 0;
+        break;
+      case MOTOR_STEPPER:
+      case MODOR_DC_LR:
+        {
+                if (pMotor->Order < 0) { // don't know where we are after boot
+                  pMotor->WishDec = MotVal;
+                  pMotor->Order = 0;
+                }
+                pr_int32_write( pMotor->WishP2, MotVal);
+                // TODO_HERE mostly ready pr_uint32_write( pMotor->WishP2, PartialAdd4( pr_uint32_read(pMotor->WishP2), DbgNum % 10000));
+        }
+        break;
+    }
+    if(pMotor->Order < 3) { // suppose ++ atomic and no more than 2 collisions
+      pMotor->Order++;
+    }
+  } else {
+    dbgprintf( 2, "Warn - No Such Motor %i\n", MotNum);
+  }
+}
+
+// the released state of the sensors
+//#define STOPPER_UNTOUCH HIGH
+#define STOPPER_UNTOUCH LOW
+
+/* Description: consider switches to stop motor if touched
+ * returns: 0 no limit touched
+ */
+int MotorLimit( int MotNum, int DMin, int DMax) {
+  int Res = 0;
+  Motor_t* pMotor = &(MotorArray[MotNum]);
+  #ifdef WITH_STOPPER
+      if(DMin>=0 && DMin<250 && STOPPER_UNTOUCH != digitalRead( DMin)) {
+        //dbgprintf( 2, "touch min %i %i\n", MotNum, DMin);
+        if (pMotor->HomingOn)
+        {  
+          MotorHome( MotNum, 0 /* end of homing */);
+          dbgprintf( 2, "homing done %i\n", MotNum);
+        } else {
+          pr_uint32_write( pMotor->Pos, 0);      
+        }
+        Res = -1;
+      }
+
+      if(DMax>=0 && DMax<250 && STOPPER_UNTOUCH != digitalRead( DMax)) {
+        dbgprintf( 2, "touch max %i %i\n", MotNum, DMax);
+        Res = 1;
+      }
+  #endif /* WITH_STOPPER */
+  if (pMotor->HomingOn && difftime( pMotor->HomingMs, millis()) > 20000) {
+    // timeout homing procs
+    pMotor->HomingOn = !pMotor->HomingOn;
+    dbgprintf( 2, "timeout no switch no home for %i\n", MotNum);
+  }
+
+  return( Res);
 }
 
 void MotorLoop( int FromInterrupt) {
@@ -4565,6 +4916,10 @@ void MotorLoop( int FromInterrupt) {
 #endif /* WITH_STEPPER_IN */
     }
 
+    #ifdef WITH_STOPPER
+      MotorLimit( Idx, StopperPins[2*Idx], StopperPins[2*Idx+1]);
+    #endif /* WITH_STOPPER */
+
     CurrPos = ExpectedPos;
     switch( pMotor->DriverMode) {
       default : 
@@ -4582,7 +4937,7 @@ void MotorLoop( int FromInterrupt) {
           CurrPos = DcPosLoop( pMotor, CurrPos);
           break;
         case MOTOR_PWM:
-          MotorDcPwm( Idx, ExpectedPos);
+          MotorDcPwm3( Idx, ExpectedPos);
           break;
         case MOTOR_PWM2:
           MotorDcPwm2( Idx, ExpectedPos);
@@ -4760,6 +5115,7 @@ void AutoActivated() {
     //dbgprintf( 2, "VectX %i, VectY %i\n", VectX, VectY);
     
   #ifdef MODULE_ADLER
+    dbgprintf( 2, "Adler specific\n");
     #ifdef WITH_MOTOR
       if (MOTOR_NB >0) {
         pMotor = &(MotorArray[0]);
@@ -4781,7 +5137,14 @@ void AutoActivated() {
 
       #ifdef WITH_STOPPER
       if(HIGH != digitalRead( StopperPins[0])) {
+        pMotor = &(MotorArray[0]);
         dbgprintf( 2, "touch min\n");
+        if (pMotor->HomingOn)
+        {  
+           pMotor->HomingOn = !pMotor->HomingOn;
+           dbgprintf( 2, "Homing done\n");
+        }
+        
         if (SensY < 0) {
           dbgprintf( 2, "set min\n");
           //SensY = 1;
@@ -4874,6 +5237,31 @@ void AutoActivated() {
 #ifdef WITH_APP
   WITH_APP 
 #endif WITH_APP
+
+
+#ifdef MODULE_HALLOWLIGHT
+    // PixelSet99( uint8_t R99, uint8_t G99, uint8_t B99, uint8_t Pos);
+    //PixelSet99( 99, 0, 0, 0);
+    // just red PixelShow99( 99 , 0 , 0 , 0);
+  K = map( MyX, 0, MaxX, 0, 1000);
+  if (K < 200) {
+    PixelShow99( 99 , 0 , 0 , 0);
+    PixelShow99( 0 , 0 , 0 , 1);
+    PixelShow99( 0 , 0 , 0 , 2);
+  } else if (K < 400) {
+    PixelShow99( 0 , 0 , 0 , 0);
+    PixelShow99( 99 , 0 , 0 , 1);
+    PixelShow99( 0 , 0 , 0 , 2);
+  } else if (K < 600) {
+    PixelShow99( 0 , 0 , 0 , 0);
+    PixelShow99( 0 , 0 , 0 , 1);
+    PixelShow99( 99 , 0 , 0 , 2);
+  } else if (K < 600) {
+    PixelShow99( 99 , 49 , 49 , 0);
+    PixelShow99( 99 , 49 , 49 , 1);
+    PixelShow99( 99 , 49 , 49 , 2);
+  }
+ #endif /* MODULE_HALLOWLIGHT */
 
 
 }
@@ -4996,6 +5384,10 @@ int Automation( void) {
     //dbgprintf( 2, "PosC\n");
   #endif /* WITH_IOTMUTUAL */
 
+  #ifdef WTH_HALL_HUV
+    dbgprintf( 2, "%i %i %i\n", digitalRead( HallHuvPins[0]), digitalRead( HallHuvPins[1]), digitalRead( HallHuvPins[2]));
+  #endif /* WTH_HALL_HUV */
+
   #ifdef WITH_WIFICLIENT
     WifiCliLoop();
   #endif /* WITH_WIFICLIENT */
@@ -5064,8 +5456,14 @@ void setup() {
   #endif /* MODULE_OUTLETS */
 
   #ifdef WITH_STOPPER
-    MyPinmode( StopperPins[0], INPUT_PULLUP);
-    MyPinmode( StopperPins[1], INPUT_PULLUP);
+    if (StopperPins[0] >= 0 && StopperPins[0] < 240)
+      MyPinmode( StopperPins[0], INPUT_PULLUP);
+    if (StopperPins[0] >= 1 && StopperPins[1] < 240)
+      MyPinmode( StopperPins[1], INPUT_PULLUP);
+    if (StopperPins[0] >= 2 && StopperPins[2] < 240)
+      MyPinmode( StopperPins[2], INPUT_PULLUP);
+    if (StopperPins[0] >= 3 && StopperPins[3] < 240)
+      MyPinmode( StopperPins[3], INPUT_PULLUP);
   #endif /* WITH_STOPPER */
 
   #ifdef WITH_WS2812
@@ -5110,6 +5508,12 @@ void setup() {
     RestartSwitchInit();
   #endif /* RESTART_PIN */
 
+  #ifdef WTH_HALL_HUV
+    pinMode( HallHuvPins[0], INPUT_PULLUP);
+    pinMode( HallHuvPins[1], INPUT_PULLUP);
+    pinMode( HallHuvPins[2], INPUT_PULLUP);
+  #endif /* WTH_HALL_HUV */
+
   #ifdef WITH_ADC
     pinMode( WITH_ADC, INPUT);
   #endif /* WITH_ADC */
@@ -5133,6 +5537,15 @@ void setup() {
     ScreenSetup();
   #endif /* WITH_SCREEN */
 
+  #ifdef WITH_RELAY_BLINK
+    MyPinmode( WITH_RELAY_BLINK, OUTPUT);
+    digitalWrite( WITH_RELAY_BLINK, HIGH);
+  #endif /* WITH_RELAY_BLINK */
+
+#ifdef MODULE_HALLOWLIGHT
+#endif
+analogWriteFreq( 32768/4 );
+
   DbgLastActivityMillis = millis();
   LoopUs = DiffTime( LoopLastUs, micros()); // init
 
@@ -5145,4 +5558,3 @@ void loop() {
 
   Res = Automation();
 }
-
