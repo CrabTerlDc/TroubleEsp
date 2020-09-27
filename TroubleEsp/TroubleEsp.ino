@@ -4749,7 +4749,13 @@ void MotorHome( int MotNum, int St) {
       pMotor->HomingMs = millis();
       pMotor->WishDec = 0;
       pMotor->Order = 0;
-    
+
+      pMotor->LastPos = 6000;
+      pMotor->P2 = 6000;
+      pr_int32_write( pMotor->WishP2, 0);
+      pMotor->WishDec = 0;
+      pMotor->Order = 1;
+
       pr_uint32_write( (pMotor->Pos), 6000);
       MotorSet( MotNum, 0);
     } // else quit homing mode done in loops
