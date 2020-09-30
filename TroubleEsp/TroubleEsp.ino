@@ -653,6 +653,11 @@ uint8_t DfpPins[] = WITH_DFPLAYER;
   uint8_t OscReply = 0;
   int OscRegulMs = 0;
 
+  int OscLastS1Ms = 0;
+  int OscLastS2Ms = 0;
+  int OscS1Diff = 0;
+  int OscS2Diff = 0;
+
   //#define OscUdpIp( Addr) (Addr | 0xFF000000)
   #define OscUdpIp( Addr) (255,255,255,255)
   #define OSC_DEFAULT_ADDR "/"BEN_TAG
@@ -2335,6 +2340,7 @@ void OscS( OSCMESSAGE &Msg) {
   int M1 = -1;
   int M2 = -1;
   int M3 = -1;
+  uint32_t Dt, Ct;
 
   // github.com/CNMAT/OSC/blob/master/API.md
   M1 = Msg.getFloat(0);
@@ -2350,17 +2356,29 @@ void OscS( OSCMESSAGE &Msg) {
     M3 = Msg.getInt(2);    
   }
 
-  // dbgprintf( 3, " OscS  %8ims -a ", DiffTime( OscLastSendMs, millis()));
+  Ct = millis();
+  Dt = DiffTime( OscLastS1Ms, Ct);
+  OscLastS1Ms = Ct;
+  if( Dt< 1000){
+    OscS1Diff = (OscS1Diff*2+Dt)/3;
+    Dt = OscS1Diff;
+  }
+  if (Dt > 1000)
+    Dt = 1000;
+  if (Dt < 50)
+    Dt = 50;
+
+  dbgprintf( 3, " OscS  %8ims -a ", Dt);
   // HI_GIRL : here your specific commands from OSC
-  //dbgprintf( 3, " Args %i %i", M1, M2);
-  //dbgprintf( 3, " %i-\n", M3);
+  dbgprintf( 3, " Args %i %i", M1, M2);
+  dbgprintf( 3, " %i-\n", M3);
   
   if (M1 >= 0)
-    MotorSet( 0, M1);
+    MotorSetTimed( 0, M1, Dt);
   if (M2 >= 0)
-    MotorSet( 1, M2);
+    MotorSetTimed( 1, M2, Dt);
   if (M3 >= 0)
-    MotorSet( 2, M3);
+    MotorSetTimed( 2, M3, Dt);
 }
 
 // retrieve a command with position for the second motor (some osc senders do not sends motor positions in one compact command)
@@ -2369,6 +2387,19 @@ void OscS2( OSCMESSAGE &Msg) {
   unsigned int M1;
   unsigned int M2;
   unsigned int M3;
+  uint32_t Dt, Ct;
+
+  Ct = millis();
+  Dt = DiffTime( OscLastS2Ms, Ct);
+  OscLastS2Ms = Ct;
+  if( Dt< 1000){
+    OscS2Diff = (OscS2Diff*2+Dt)/3;
+    Dt = OscS2Diff;
+  }
+  if (Dt > 1000)
+    Dt = 1000;
+  if (Dt < 50)
+    Dt = 50;
 
   // github.com/CNMAT/OSC/blob/master/API.md
   M1 = Msg.getFloat(0);
@@ -2376,11 +2407,12 @@ void OscS2( OSCMESSAGE &Msg) {
     M1 = Msg.getInt(0);    
   }
 
-  dbgprintf( 3, " OscS2 %8ims -a ", DiffTime( OscLastSendMs, millis()));
+  //dbgprintf( 3, " OscS2 %8ims -a ", DiffTime( OscLastSendMs, millis()));
   // HI_GIRL : here your specific commands from OSC
-  dbgprintf( 3, " Args %i %i", M1, M2);
-  dbgprintf( 3, " %i-\n", M3);
-  MotorSet( 1, M1);
+  //dbgprintf( 3, " Args %i %i", M1, M2);
+  //dbgprintf( 3, " %i-\n", M3);
+  if (M1 >= 0)
+    MotorSetTimed( 1, M1, Dt);
 }
 
 void OscI1( OSCMESSAGE &Msg) {
@@ -4762,13 +4794,15 @@ void MotorHome( int MotNum, int St) {
   }
 }
 
-void MotorSet( int MotNum, int MotVal) {
+// instruct motor X to go to pos Y in T milliseconds
+void MotorSetTimed( int MotNum, int MotVal, int Dt) {
   
   // dbgprintf( 2, "MotorSet( %i, %i)\n", MotNum, MotVal);
-
   if ((MotNum >= 0) && (MotNum < MOTOR_NB)) {
     Motor_t* pMotor = &(MotorArray[MotNum]);
 
+    if (Dt >0)
+      pr_uint32_write( pMotor->WishDTms, Dt);
     //dbgprintf( 2, "MotorSet( %i, %i) %i\n", MotNum, MotVal, pMotor->DriverMode);
     switch( pMotor->DriverMode) {
       default :
@@ -4798,6 +4832,10 @@ void MotorSet( int MotNum, int MotVal) {
   } else {
     dbgprintf( 2, "Warn - No Such Motor %i\n", MotNum);
   }
+}
+
+void MotorSet( int MotNum, int MotVal) {
+  MotorSetTimed( MotNum, MotVal, 500);
 }
 
 // the released state of the sensors
