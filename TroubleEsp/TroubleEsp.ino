@@ -776,7 +776,7 @@ extern "C" {
 #ifdef WITH_MOTOR
 
   #define MOTOR_NB (ServoNb + StepperNb + dcMotorNb)
-  
+  #define MOTOR_MAXTOSC_MS 1000 // supposed time to reach position between 2 osc commands
   typedef enum MotorMode_e {
     // motor Mode
     MOTOR_UNDEF = 0,
@@ -2356,15 +2356,16 @@ void OscS( OSCMESSAGE &Msg) {
     M3 = Msg.getInt(2);    
   }
 
+  // guess time between 2 commands when the arrive in a flow
   Ct = millis();
   Dt = DiffTime( OscLastS1Ms, Ct);
   OscLastS1Ms = Ct;
-  if( Dt< 1000){
+  if( Dt< MOTOR_MAXTOSC_MS){
     OscS1Diff = (OscS1Diff*2+Dt)/3;
     Dt = OscS1Diff;
   }
-  if (Dt > 1000)
-    Dt = 1000;
+  if (Dt > MOTOR_MAXTOSC_MS)
+    Dt = MOTOR_MAXTOSC_MS;
   if (Dt < 50)
     Dt = 50;
 
@@ -2374,11 +2375,11 @@ void OscS( OSCMESSAGE &Msg) {
   dbgprintf( 3, " %i-\n", M3);
   
   if (M1 >= 0)
-    MotorSetTimed( 0, M1, Dt);
+    MotorSetTimed( 0, M1, Dt*1.1);
   if (M2 >= 0)
-    MotorSetTimed( 1, M2, Dt);
+    MotorSetTimed( 1, M2, Dt*1.1);
   if (M3 >= 0)
-    MotorSetTimed( 2, M3, Dt);
+    MotorSetTimed( 2, M3, Dt*1.1);
 }
 
 // retrieve a command with position for the second motor (some osc senders do not sends motor positions in one compact command)
@@ -2389,15 +2390,16 @@ void OscS2( OSCMESSAGE &Msg) {
   unsigned int M3;
   uint32_t Dt, Ct;
 
+  // guess time between 2 commands when the arrive in a flow
   Ct = millis();
   Dt = DiffTime( OscLastS2Ms, Ct);
   OscLastS2Ms = Ct;
-  if( Dt< 1000){
+  if( Dt< MOTOR_MAXTOSC_MS){
     OscS2Diff = (OscS2Diff*2+Dt)/3;
     Dt = OscS2Diff;
   }
-  if (Dt > 1000)
-    Dt = 1000;
+  if (Dt > MOTOR_MAXTOSC_MS)
+    Dt = MOTOR_MAXTOSC_MS;
   if (Dt < 50)
     Dt = 50;
 
@@ -2412,7 +2414,7 @@ void OscS2( OSCMESSAGE &Msg) {
   //dbgprintf( 3, " Args %i %i", M1, M2);
   //dbgprintf( 3, " %i-\n", M3);
   if (M1 >= 0)
-    MotorSetTimed( 1, M1, Dt);
+    MotorSetTimed( 1, M1, Dt*1.1);
 }
 
 void OscI1( OSCMESSAGE &Msg) {
@@ -3480,6 +3482,11 @@ uint32_t StepperLoop( Motor_t* pMotor, uint32_t ExpectedPos) {
   if (Dist < 0) {
     if (1 == pMotor->StepperD) {
       pMotor->StepperD = 0;
+      #ifdef WITH_INVERT1
+        if(1 == pMotor->MotNum)
+          digitalWrite( DirPin, !pMotor->StepperD);
+        else
+      #endif /* WITH_INVERT1 */
       digitalWrite( DirPin, pMotor->StepperD);
       // dir <- StepperD
     } else {
@@ -3493,6 +3500,11 @@ uint32_t StepperLoop( Motor_t* pMotor, uint32_t ExpectedPos) {
     if (0 == pMotor->StepperD) {
       pMotor->StepperD = 1;
       // dir <- StepperD
+      #ifdef WITH_INVERT1
+        if(1 == pMotor->MotNum)
+          digitalWrite( DirPin, !pMotor->StepperD);
+        else
+      #endif /* WITH_INVERT1 */
       digitalWrite( DirPin, pMotor->StepperD);
     } else { // 0 == dist
         StepperPos ++;
