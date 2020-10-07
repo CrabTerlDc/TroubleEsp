@@ -1,4 +1,4 @@
-#define HARDWARE_NAME "TASS_20200927c"
+#define HARDWARE_NAME "TASS_20201007"
 
 /*
   Trouble Software for ESP8266, ESP32 and Co
@@ -246,6 +246,7 @@ https://arduino.esp8266.com/stable/package_esp8266com_index.json
   // gpio 36 lots of gpio err on console 
 #endif
 
+#define TIME_OSC_MS 500
 
 #define ACT_UNKN 0
 #define ACT_ININIT 1
@@ -2375,11 +2376,11 @@ void OscS( OSCMESSAGE &Msg) {
   dbgprintf( 3, " %i-\n", M3);
   
   if (M1 >= 0)
-    MotorSetTimed( 0, M1, Dt*1.1);
+    MotorSetTimed( 0, M1, TIME_OSC_MS);
   if (M2 >= 0)
-    MotorSetTimed( 1, M2, Dt*1.1);
+    MotorSetTimed( 1, M2, TIME_OSC_MS);
   if (M3 >= 0)
-    MotorSetTimed( 2, M3, Dt*1.1);
+    MotorSetTimed( 2, M3, TIME_OSC_MS);
 }
 
 // retrieve a command with position for the second motor (some osc senders do not sends motor positions in one compact command)
@@ -2414,7 +2415,7 @@ void OscS2( OSCMESSAGE &Msg) {
   //dbgprintf( 3, " Args %i %i", M1, M2);
   //dbgprintf( 3, " %i-\n", M3);
   if (M1 >= 0)
-    MotorSetTimed( 1, M1, Dt*1.1);
+    MotorSetTimed( 1, M1, TIME_OSC_MS);
 }
 
 void OscI1( OSCMESSAGE &Msg) {
@@ -3425,6 +3426,11 @@ void StepperSetup( ) {
     pMotor->Pin2 = PinPulse;
     
     MyPinmode( PinDir, OUTPUT);
+    #ifdef WITH_INVERT1
+      if(1 == Idx)
+        digitalWrite( PinDir, !pMotor->StepperD);
+      else
+    #endif /* WITH_INVERT1 */
     digitalWrite( PinDir, pMotor->StepperD);
     MyPinmode( PinPulse, OUTPUT);
     digitalWrite( PinPulse, pMotor->StepperP);
@@ -4794,13 +4800,13 @@ void MotorHome( int MotNum, int St) {
       pMotor->WishDec = 0;
       pMotor->Order = 0;
 
-      pMotor->LastPos = 6000;
-      pMotor->P2 = 6000;
+      pMotor->LastPos = HOMING_MAX;
+      pMotor->P2 = HOMING_MAX;
       pr_int32_write( pMotor->WishP2, 0);
       pMotor->WishDec = 0;
       pMotor->Order = 1;
 
-      pr_uint32_write( (pMotor->Pos), 6000);
+      pr_uint32_write( (pMotor->Pos), HOMING_MAX);
       MotorSet( MotNum, 0);
     } // else quit homing mode done in loops
   }
