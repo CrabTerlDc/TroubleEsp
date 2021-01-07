@@ -1,4 +1,4 @@
-#define HARDWARE_NAME "TASS_20201007"
+#define HARDWARE_NAME "TASS_20201015"
 
 /*
   Trouble Software for ESP8266, ESP32 and Co
@@ -372,7 +372,7 @@ typedef int32_t pr_int32_t[3];
       // C:\Users\utilisateur\Documents\Arduino\libraries\WiFi\src\WiFiUdp.h
       #include <WiFiUdp.h>
 
-      // github.com/CNMAT/OSC
+      // github.com/CNMAT/OSC - download as .zip - Croquis|importer bibliotheque|Ajouter la bibliotheque zip
       // C:\Users\utilisateur\Documents\Arduino\libraries\OSC-master
       #include <OSCMessage.h> // this include seems particularly order dependent ESP8266WiFi.h, WiFiUdp.h, OSCMessage.h
       #include <OSCBundle.h>
@@ -3427,11 +3427,17 @@ void StepperSetup( ) {
     
     MyPinmode( PinDir, OUTPUT);
     #ifdef WITH_INVERT1
-      if(1 == Idx)
+      if(1 == Idx) {
+        //dbgprintf( 3, " Idx %i inverted %i\n", Idx, PinDir);
         digitalWrite( PinDir, !pMotor->StepperD);
-      else
+      } else {
+        //dbgprintf( 3, " Idx %i standard %i\n", Idx, PinDir);
+        digitalWrite( PinDir, pMotor->StepperD);
+      }
+    #else /* WITH_INVERT1 */
+      //dbgprintf( 3, " Idx %i normal %i\n", Idx, PinDir);
+      digitalWrite( PinDir, pMotor->StepperD);
     #endif /* WITH_INVERT1 */
-    digitalWrite( PinDir, pMotor->StepperD);
     MyPinmode( PinPulse, OUTPUT);
     digitalWrite( PinPulse, pMotor->StepperP);
 
@@ -3489,11 +3495,14 @@ uint32_t StepperLoop( Motor_t* pMotor, uint32_t ExpectedPos) {
     if (1 == pMotor->StepperD) {
       pMotor->StepperD = 0;
       #ifdef WITH_INVERT1
-        if(1 == pMotor->MotNum)
+        if(1 == pMotor->MotNum) {
           digitalWrite( DirPin, !pMotor->StepperD);
-        else
+        } else {
+          digitalWrite( DirPin, pMotor->StepperD);
+        }
+      #else /* WITH_INVERT1 */
+        digitalWrite( DirPin, pMotor->StepperD);
       #endif /* WITH_INVERT1 */
-      digitalWrite( DirPin, pMotor->StepperD);
       // dir <- StepperD
     } else {
       StepperPos --;
@@ -3507,11 +3516,14 @@ uint32_t StepperLoop( Motor_t* pMotor, uint32_t ExpectedPos) {
       pMotor->StepperD = 1;
       // dir <- StepperD
       #ifdef WITH_INVERT1
-        if(1 == pMotor->MotNum)
+        if(1 == pMotor->MotNum) {
           digitalWrite( DirPin, !pMotor->StepperD);
-        else
+        } else {
+          digitalWrite( DirPin, pMotor->StepperD);
+        }
+      #else /* WITH_INVERT1 */
+        digitalWrite( DirPin, pMotor->StepperD);
       #endif /* WITH_INVERT1 */
-      digitalWrite( DirPin, pMotor->StepperD);
     } else { // 0 == dist
         StepperPos ++;
         pMotor->StepperP = !pMotor->StepperP;
@@ -4803,11 +4815,14 @@ void MotorHome( int MotNum, int St) {
       pMotor->LastPos = HOMING_MAX;
       pMotor->P2 = HOMING_MAX;
       pr_int32_write( pMotor->WishP2, 0);
+      pr_uint32_write( pMotor->WishDTms, HOMING_TIME);
       pMotor->WishDec = 0;
       pMotor->Order = 1;
 
       pr_uint32_write( (pMotor->Pos), HOMING_MAX);
-      MotorSet( MotNum, 0);
+
+      // MotorSet( MotNum, 0);
+      MotorSetTimed( MotNum, 0, HOMING_TIME);
     } // else quit homing mode done in loops
   }
 }
