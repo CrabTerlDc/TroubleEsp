@@ -1,4 +1,4 @@
-#define HARDWARE_NAME "TASS_20201015"
+#define HARDWARE_NAME "TASS_20210108S"
 
 /*
   Trouble Software for ESP8266, ESP32 and Co
@@ -12,17 +12,11 @@
   size ESP8266:
    1074464/81920 at max
     179840/40804 on 20170404
-    274395/40656 on 20170306
-    274439/40088 on 20170201
-    263155/38500 on 20170122
-    237650/33832 on 20160727
-    222878/35008 on 20160529
-    221022/34624 on 20160101
+
     220786/34660 on 20160204
 
   TODO_LIST
   - compatibility https://ossia.io/ "C:\Program Files\ossia score 3.0.0\score.exe"
-  - DC Dir+Pwm (MD50) or Left+Right (or stepper?) selectable
   - DC & step drive per speed,
   - DC&Step, stoppers, homing, autotune, followers
   - Gcode thru OSC, https://www.marginallyclever.com/2013/08/how-to-build-an-2-axis-arduino-cnc-gcode-interpreter/
@@ -471,7 +465,7 @@ void TimeRunningDump( String& LocStr);
   int HallHuvPins[]=WTH_HALL_HUV;
   #endif /* WTH_HALL_HUV */
 
-#ifdef WITH_STEPPER
+#if defined( WITH_STEPPER) or defined(WITH_BRLESS)
   // So ... where do you want to wire the stepper driver
   #define WITH_MOTOR
   #ifndef ESP32
@@ -540,11 +534,13 @@ uint8_t DfpPins[] = WITH_DFPLAYER;
 // 5v (or 3.3V)    -> Strip 5v
 // 2  (NEOPIX_PIN) -> Strip Din
 // Gnd             -> Strip Gnd
-#include <Adafruit_NeoPixel.h>
+#ifdef WITH_WS2812
+  #include <Adafruit_NeoPixel.h> // arduino ide do not play the ifdef on includes... maybe one day but now should add lib
+#endif /* WITH_WS2812 */
 #ifdef __AVR__
-#include <avr/power.h>
+  #include <avr/power.h>
 #endif
-// how many leds on the strip
+  // how many leds on the strip
 #endif
 
 #define PLAYERS_NB  8
@@ -766,18 +762,35 @@ extern "C" {
   #define StepperNb 0
 #endif /* WITH_STEPPER */
 
+#ifdef WITH_BRLESS
+  // brushless (3 coils) motor
+  uint8_t BrushlessPins[] = WITH_BRLESS;
+  #define BrushlessNb (sizeof( BrushlessPins) / (6*sizeof(uint8_t)))
+  #define MOTOR_BRLESS_IDX (ServoNb + StepperNb)
+#else
+  #define BrushlessNb 0
+#endif /* WITH_BRLESS */
+
 #ifdef WITH_DCMOTOR
   uint8_t dcMotorPins[] = WITH_DCMOTOR;
   #define dcMotorNb (sizeof( dcMotorPins) / (2*sizeof(uint8_t)))
-  #define MOTOR_DC_IDX (ServoNb + StepperNb)
+  #define MOTOR_DC_IDX (ServoNb + StepperNb + BrushlessNb)
 #else /* WITH_DCMOTOR */
   #define dcMotorNb 0
 #endif /* WITH_DCMOTOR */
 
 #ifdef WITH_MOTOR
 
-  #define MOTOR_NB (ServoNb + StepperNb + dcMotorNb)
+  #define MOTOR_NB (ServoNb + StepperNb + BrushlessNb + dcMotorNb)
   #define MOTOR_MAXTOSC_MS 1000 // supposed time to reach position between 2 osc commands
+  #ifndef HOMING_MAX
+    #define HOMING_MAX 14000
+  #endif /* HOMING_MAX */
+  #ifndef HOMING_TIME
+    #define HOMING_TIME 6000
+  #endif /* HOMING_TIME */
+
+  
   typedef enum MotorMode_e {
     // motor Mode
     MOTOR_UNDEF = 0,
@@ -789,6 +802,7 @@ extern "C" {
     #ifdef WITH_SERVO
       MOTOR_SERVO,
     #endif
+    MOTOR_BRLESS,
     MOTOR_MAXDEFS
   } MotorMode_t;
 
@@ -838,6 +852,7 @@ extern "C" {
     uint8_t StepperP; // current Pulse (up or down)
 
   } Motor_t;
+
 
   Motor_t MotorArray[MOTOR_NB];
 #endif /* WITH_MOTOR */
@@ -1707,7 +1722,6 @@ void StateDumpBld_2( String& LocStr) {
   int Idx;
 
 #ifdef WITH_MOTOR
-
   for (Idx = 0; Idx < MOTOR_NB; Idx++) {
     Motor_t* pMotor = &(MotorArray[Idx]);
     LocStr  +=  "-Motor:" + CSTRI(Idx) + ", pos:" + CSTRI( pr_uint32_read(pMotor->Pos))+ "\n";
@@ -1716,12 +1730,19 @@ void StateDumpBld_2( String& LocStr) {
       switch( pMotor->DriverMode) {
         case MOTOR_UNDEF : LocStr += " , undefined";break;
         case MODOR_DC_LR : LocStr += " , DC_LR, A:" + CSTRI( pMotor->Pin1) + ", B:" + CSTRI( pMotor->Pin2); break;
-        case MOTOR_PWM   : LocStr += " , PWM Puls:"      + CSTRI( pMotor->Pin1) ; break;
+        case MOTOR_PWM   : LocStr += " , PWM Puls:"      + CSTRI( pMotor->Pin1); break;
         case MOTOR_PWM2  : LocStr += " , PWM2 Puls:"     + CSTRI( pMotor->Pin1); break;
         case MOTOR_STEPPER :   
            LocStr += " , Stepper PulsP:" + CSTRI( pMotor->Pin2) + ", DirP:" + CSTRI( pMotor->Pin1);
-
-        break;
+           break;
+        #ifdef WITH_BRLESS
+          case MOTOR_BRLESS :   
+             LocStr += " , Brushless";
+             LocStr += " , A+:" + CSTRI( BrushlessPins[pMotor->Pin1 + 0]) + ", A-:" + CSTRI( BrushlessPins[pMotor->Pin1 + 1]);
+             LocStr += " , B+:" + CSTRI( BrushlessPins[pMotor->Pin1 + 2]) + ", B-:" + CSTRI( BrushlessPins[pMotor->Pin1 + 3]);
+             LocStr += " , C+:" + CSTRI( BrushlessPins[pMotor->Pin1 + 4]) + ", C-:" + CSTRI( BrushlessPins[pMotor->Pin1 + 5]);
+             break;
+        #endif /* WITH_BRLESS */
         #ifdef WITH_SERVO
           case MOTOR_SERVO : LocStr +=  " SERVO"; break;
         #endif /* WITH_SERVO */
@@ -1748,6 +1769,7 @@ void StateDumpBld_2( String& LocStr) {
         #ifdef WITH_SERVO
           case MOTOR_SERVO : LocStr += CSTRI(i) + " SERVO\n"; break;
         #endif /* WITH_SERVO */
+        case MOTOR_BRLESS : LocStr  +=  CSTRI(i) + " BRLESS\n"; break;
         default : LocStr  +=  CSTRI(i) + "undef\n"; break;
       }
   }
@@ -1759,7 +1781,7 @@ void StateDumpBld_2( String& LocStr) {
     LocStr += CSTRI(ServoPins[i]) + ", ";
   }
   LocStr += "}\n";
-#endif /* WITH_STEPPER */
+#endif /* WITH_SERVO */
 
 #ifdef WITH_STEPPER_IN
   LocStr  +=  "-StepperIn pos:" + CSTRI( pr_uint32_read( pr_StepperInPos));
@@ -3048,6 +3070,7 @@ void CmdLineParse( unsigned char Ch) {
 
               break;
             case MOTOR_STEPPER:
+            case MOTOR_BRLESS:
             case MODOR_DC_LR:
               {
                 if (pMotor->Order < 0) { // don't know where we are after boot
@@ -3535,7 +3558,140 @@ uint32_t StepperLoop( Motor_t* pMotor, uint32_t ExpectedPos) {
 
   return ( StepperPos);
 }
+#endif /* WITH_STEPPER */
 
+#ifdef WITH_BRLESS
+
+void BrushlessSetup( ) {
+
+  Motor_t* pMotor;
+  int Idx;
+  int PinNum;
+
+  for( Idx = 0; Idx < BrushlessNb; Idx++){
+    
+    pMotor = &(MotorArray[Idx+MOTOR_BRLESS_IDX]);
+
+    pMotor->StepperD = 0;
+    pMotor->StepperP = 0;
+    pMotor->Pin1 = Idx*6;
+    
+    for(PinNum = 0; PinNum<6; PinNum++) {
+      MyPinmode( BrushlessPins[pMotor->Pin1 + PinNum], OUTPUT);
+      digitalWrite( BrushlessPins[pMotor->Pin1 + PinNum], 0);
+    }
+
+    // 15us for typical mofset
+    //pMotor->MinCommandUs = 500;
+    pMotor->MinCommandUs = 1500;
+
+    if (MOTOR_UNDEF == pMotor->DriverMode) {
+      pMotor->DriverMode = MOTOR_BRLESS;
+    }
+  }
+}
+
+/*
+ * @param Phase   0 for A, 1 for B, 2 for C
+ */
+void BrushlessSet( Motor_t* pMotor, uint8_t Phase, sint8 Val) {
+  uint8_t PhP = BrushlessPins[pMotor->Pin1 + Phase*2 + 0];
+  uint8_t PhM = BrushlessPins[pMotor->Pin1 + Phase*2 + 1];
+  uint8_t SignOld = (pMotor->Pin2 >> (Phase*2)) & 0x03;
+  uint8_t SignNew;
+
+  SignNew = ((Val > 0) << 1) | (Val < 0);
+  
+  //dbgprintf( 2, "Ph%i V%i ", Phase, Val);
+  //dbgprintf( 2, "so%i sn%i ", SignOld, SignNew);
+
+  if (SignOld != SignNew) {
+    pMotor->Pin2 = pMotor->Pin2 & ~( 0x03 << (Phase*2));
+    pMotor->Pin2 = pMotor->Pin2 | (SignNew << (Phase*2));
+    if (Val > 0) {
+      dbgprintf( 2, "Ph%i+%i\n", Phase, PhP);
+      digitalWrite( PhM, 0); // beware to cut the + before opening the - to not shortcut
+      digitalWrite( PhP, 1);
+    } else if (Val < 0) {
+      dbgprintf( 2, "Ph%i-%i\n", Phase, PhM);
+      digitalWrite( PhP, 0);
+      digitalWrite( PhM, 1);
+    } else {
+      digitalWrite( PhP, 0);
+      digitalWrite( PhM, 0);
+    }
+  }
+}
+
+/* @brief drive the brushless the same way a stepper would
+ *
+ */
+uint32_t BrushlessLoop( Motor_t* pMotor, uint32_t ExpectedPos) {
+  long CurTime;
+  int32_t Dist;
+  uint32_t StepperPos = pMotor->LastPos;
+  uint8_t TMin = 0;
+  uint32_t Rand;
+  sint8_t VA, VB, VC;
+
+  CurTime = millis();
+  Rand = random(9999);
+
+  Dist = Vectorize( StepperPos, ExpectedPos);
+  //dbgprintf( 2, " Pos:%5u, Expect:%5u,", StepperPos, ExpectedPos);
+  // dbgprintf( 2, " D:%5i\n", Dist);
+
+  #ifdef WITH_STOPPER
+    if( PinNumAcceptable(pMotor->DMin))
+      pMotor->ReadMin = (pMotor->ReadMin *3 + (STOPPER_UNTOUCH != digitalRead( pMotor->DMin))*100)/4;
+    TMin = pMotor->ReadMin > 50;
+    if (TMin != pMotor->LastMin) {
+      pMotor->LastMin = TMin;
+      dbgprintf( 2, "touch min %i %i\n", pMotor->MotNum, pMotor->LastMin);
+    }
+
+    if (TMin && pMotor->HomingOn) { // fin de homing
+      dbgprintf( 2, "end homing %i %i\n", pMotor->MotNum, pMotor->LastMin);
+      pMotor->HomingOn = 0;
+      pMotor->LastPos = pMotor->P2 = pMotor->P1 = 0;
+      pMotor->WishDec = 10; // move a little away from stopper
+      pr_int32_write( pMotor->WishP2, 0);
+      pMotor->Order = 0;
+    }
+  #endif /* WITH_STOPPER */
+  #ifdef WITH_STOPPER _A
+    // TODO_HERE
+    //if (PinNumAcceptable( DMax) && STOPPER_UNTOUCH != digitalRead( DMax)) {
+    //  dbgprintf( 2, "touch max %i %i\n", MotNum, DMax);
+    //  Res = 1;
+    //}
+  #endif /* WITH_STOPPER */
+  if (Dist < 0) {
+    pMotor->StepperD --;
+    if ((pMotor->StepperD < 0)||(pMotor->StepperD > 5))
+      pMotor->StepperD = 5;
+    StepperPos --;
+  } else if (Dist > 0) {
+    pMotor->StepperD ++;
+    if (pMotor->StepperD > 5)
+     pMotor->StepperD = 0;
+    StepperPos ++;
+  } else { // 0 == dist ... fine with that
+  }
+  
+  switch(pMotor->StepperD) {
+    case 0 : BrushlessSet( pMotor, 0,  127);BrushlessSet( pMotor, 1,  -64);BrushlessSet( pMotor, 2,  -64); break; // A at max
+    case 1 : BrushlessSet( pMotor, 0,   64);BrushlessSet( pMotor, 1,   64);BrushlessSet( pMotor, 2, -127); break;
+    case 2 : BrushlessSet( pMotor, 0,  -64);BrushlessSet( pMotor, 1,  127);BrushlessSet( pMotor, 2,  -64); break; // B at max
+    case 3 : BrushlessSet( pMotor, 0, -127);BrushlessSet( pMotor, 1,   64);BrushlessSet( pMotor, 2,   64); break;
+    case 4 : BrushlessSet( pMotor, 0,  -64);BrushlessSet( pMotor, 1,  -64);BrushlessSet( pMotor, 2,  127); break; // C at max
+    case 5 : BrushlessSet( pMotor, 0,   64);BrushlessSet( pMotor, 1, -127);BrushlessSet( pMotor, 2,   64); break;
+  }
+  pMotor->LastPos = StepperPos;
+
+  //dbgprintf( 2, "pMotor->StepperD %i\n", pMotor->StepperD);
+  return ( StepperPos);
+}
 #endif /* WITH_STEPPER */
 
 #ifdef STEPPER_IN_PULSE_PIN
@@ -4769,6 +4925,10 @@ void MotorSetup() {
 
   pMotor->LastPulseUs = micros();
 
+  #ifdef WITH_BRLESS
+    BrushlessSetup( );
+  #endif /* WITH_BRLESS */
+
   #ifdef WITH_STEPPER
     StepperSetup( );
   #endif /* WITH_STEPPER */
@@ -5009,6 +5169,11 @@ void MotorLoop( int FromInterrupt) {
         // hoops
         // dbgprintf( 2, "MotorLoop Hoops %i undef %i\n", Idx, pMotor->DriverMode); // miss in code, must init somewhere
         break;
+      #ifdef WITH_BRLESS
+        case MOTOR_BRLESS:
+          CurrPos = BrushlessLoop( pMotor, ExpectedPos);
+          break;
+      #endif /* WITH_BRLESS */
       #ifdef WITH_STEPPER
         case MOTOR_STEPPER:
           CurrPos = StepperLoop( pMotor, ExpectedPos);
@@ -5103,7 +5268,7 @@ void TimedInt( void* pArg) {
   #ifdef WITH_TIMER
     TimerStop();
   #endif /* WITH_TIMER */
-  // TODO_HERE   StepperSpeedPerMilSec ; // ticks per hour if drived per speed
+  // TODO_LATER   StepperSpeedPerMilSec ; // ticks per hour if drived per speed
   #ifdef WITH_MOTOR
     MotorLoop( 1);
   #endif /* WITH_MOTOR */
